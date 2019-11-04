@@ -71,12 +71,12 @@ double RelativeTime(std::vector<cell>* vec_cell)
 {
 	double tlay [5] = {0,0,0,0,0};
 	double en [5] = {0,0,0,0,0};
-	double dz [5] = {0,0.22,0.44,0.66,0.905};
+	double dz [5] = {0,0.044,0.088,0.132,0.18095};
 	LayerTime(vec_cell,tlay,en);
 	
 	for(int j = 0; j < 5; j++)
 	{
-		tlay[j] = tlay[j]-dz[j]/2.998; //t0-(dz_layer/c) [ns]
+		tlay[j] = tlay[j]-dz[j]/0.2998; //t0-(dz_layer[m]/c[m/ns]) [ns]
 	}
 	
 	double t = 0;
