@@ -1,6 +1,7 @@
 Build
 - make sure you have *root-config* in your ${PATH} environment variable
 - open Makefile and customize the location of *Edep-sim* installation
+- set library path as: export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:your/location/kloe-simu/lib 
 - Then:
 
 ```
@@ -41,4 +42,5 @@ Analysis
 ```
 Analyze <input file>
 ```
+
 
