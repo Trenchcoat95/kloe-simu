@@ -53,6 +53,10 @@ void LayerTime(std::vector<cell>* vec_cell, double tlay [5] ,double en [5] )
 			tlay[planeID] += t0 * (c.adc1+c.adc2);
 			en[planeID] += c.adc1 + c.adc2;
 		}		
+		if (t0<0)
+		{
+			//std::cout<<"t0="<<t0<<std::endl;
+		}
 	}
 
 	for(int j = 0; j < 5; j++)
@@ -67,12 +71,12 @@ double RelativeTime(std::vector<cell>* vec_cell)
 {
 	double tlay [5] = {0,0,0,0,0};
 	double en [5] = {0,0,0,0,0};
+	double dz [5] = {0,0.22,0.44,0.66,0.905};
 	LayerTime(vec_cell,tlay,en);
 	
-	for(int j = 1; j < 5; j++)
+	for(int j = 0; j < 5; j++)
 	{
-		if (1<j<4) {tlay[j] = tlay[j]-0.22*2.998;} //t0-(dz_layer*c) [ns]
-		else {tlay[j] = tlay[j]-0.245*2.998;}    //t0-(dz_lastlayer*c) [ns]
+		tlay[j] = tlay[j]-dz[j]/2.998; //t0-(dz_layer/c) [ns]
 	}
 	
 	double t = 0;
