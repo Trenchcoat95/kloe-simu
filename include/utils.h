@@ -35,9 +35,9 @@ namespace ns_Digit {
   double ec_dz;
   
   const char* path_ECAL_template = "volWorld_PV";
-  const char* path_barrel_template = "volWorld_PV/volDetEnclosure_PV_0/volKLOEFULLECALSENSITIVE_EXTTRK_NEWGAP_PV_0/KLOEBarrelECAL_%d_volume_PV_0";
-  const char* path_endcapL_template = "volWorld_PV/volDetEnclosure_PV_0/volKLOEFULLECALSENSITIVE_EXTTRK_NEWGAP_PV_0/KLOEEndcapECALL_volume_PV_0";
-  const char* path_endcapR_template = "volWorld_PV/volDetEnclosure_PV_0/volKLOEFULLECALSENSITIVE_EXTTRK_NEWGAP_PV_0/KLOEEndcapECALR_volume_PV_0";
+  const char* path_barrel_template = "volWorld_PV_1/volKLOE_PV_0/KLOEEcalBarrel_volume_PV_%d";
+  const char* path_endcapL_template = "volWorld_PV_1/volKLOE_PV_0/KLOEEcalEndcap_volume_PV_0";
+  const char* path_endcapR_template = "volWorld_PV_1/volKLOE_PV_0/KLOEEcalEndcap_volume_PV_1";
   
   const double tscin = 3.08;
   const double tscex = 0.588;

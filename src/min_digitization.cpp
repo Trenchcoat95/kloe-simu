@@ -237,13 +237,13 @@ void SimulatePE(TG4Event* ev, TGeoManager* g, std::map<int, std::vector<double> 
 
     TRandom3 r(0);
 	
-	std::cout << "map size: " << ev->SegmentDetectors.size() << std::endl;
+	//std::cout << "map size: " << ev->SegmentDetectors.size() << std::endl;
 
     for (std::map<std::string,std::vector<TG4HitSegment> >::iterator it=ev->SegmentDetectors.begin();
             it!=ev->SegmentDetectors.end(); ++it)
     {
-	  std::cout << it->first << std::endl;
-      if(it->first == "EMCal")
+	  //std::cout << it->first << std::endl;
+      if(it->first == "EMCalSci")
       {
         for(unsigned int j = 0; j < it->second.size(); j++)
         {          
@@ -475,7 +475,7 @@ void Digitize(const char* finname, const char* foutname)
 
 void help_digit()
 {
-  std::cout << "Digitize <input file> <output file>" << std::endl;
+  std::cout << "MinDigitize <input file> <output file>" << std::endl;
   std::cout << "input file name could contain wild card" << std::endl;
 } 
 

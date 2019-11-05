@@ -158,17 +158,17 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
   {
     std::cout << "node name: " << str.Data() << std::endl;
   }
-  if(str.Contains("KLOEEndcapECALL_volume_PV_0") == true || str.Contains("KLOEEndcapECALR_volume_PV_0") == true)
-  {
-    return false;
-  }
-  else if(str.Contains("KLOEBarrelECAL") == true && str.Contains("lead_slab") == false)
+//  if(str.Contains("KLOEEndcapECALL_volume_PV_0") == true || str.Contains("KLOEEndcapECALR_volume_PV_0") == true)
+//  {
+//    return false;
+//  }
+  if(str.Contains("KLOEEcalBarrel") == true && str.Contains("Active") == true)
   {
     TObjArray* obja = str.Tokenize("_");
     
     int slabID;
-    modID  = ((TObjString*) obja->At(1))->GetString().Atoi();
-    slabID = ((TObjString*) obja->At(4))->GetString().Atoi();
+    modID  = ((TObjString*) obja->At(4))->GetString().Atoi();
+    slabID = ((TObjString*) obja->At(2))->GetString().Atoi();
     
     delete obja;
     
@@ -223,62 +223,15 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
     
     return true;
   }
-  else if(str.Contains("KLOEEndcapECALR") == true && str.Contains("lead_slab") == false)
+  else if(str.Contains("KLOEEcalEndcap") == true && str.Contains("Active") == true)
   {
     TObjArray* obja = str.Tokenize("_");
     
     int slabID;
-    modID  = 30;
-    slabID = ((TObjString*) obja->At(4))->GetString().Atoi();
-    
-    delete obja;
-    
-    // planeID==0 -> smallest slab
-    // planeID==208 -> biggest slab
-    planeID = (208 - slabID)/40;
-    
-    if (planeID > 4) planeID = 4;
-    
-    double Pmaster[3];
-    double Plocal[3];
-    Pmaster[0] = x;
-    Pmaster[1] = y;
-    Pmaster[2] = z;
-    
-    g->GetCurrentNavigator()->MasterToLocal(Pmaster,Plocal);
-    
-    TGeoTube* tub = (TGeoTube*) node->GetVolume()->GetShape();
-    
-    if(ns_Digit::debug)
-    {
-      std::cout << "pointer: " << tub << std::endl;
-    }
-    
-    double rmin = tub->GetRmin();
-    double rmax = tub->GetRmax();
-    double dz  = tub->GetDz();
-    
-    d1 = rmax * TMath::Sin(TMath::ACos(Plocal[0]/rmax)) - Plocal[1];
-    d2 = rmax * TMath::Sin(TMath::ACos(Plocal[0]/rmax)) + Plocal[1];
-    
-    cellID = int((Plocal[0]/rmax + 1.) * 45);
-    
-    if(ns_Digit::debug)
-    {
-      std::cout << "hit: " << str.Data() << std::endl;
-      std::cout << "\t[x,y,z]                " << x << " " << y << " " << z << std::endl;
-      std::cout << "\t[modID,planeID,cellID] " << modID << " " << planeID << " " << cellID << std::endl;
-    }
-    
-    return true;
-  }
-  else if(str.Contains("KLOEEndcapECALL") == true && str.Contains("lead_slab") == false)
-  {
-    TObjArray* obja = str.Tokenize("_");
-    
-    int slabID;
-    modID  = 40;
-    slabID = ((TObjString*) obja->At(4))->GetString().Atoi();
+    modID  = ((TObjString*) obja->At(4))->GetString().Atoi();
+	if (modID==0) {modID=40;}
+	else if (modID==1) {modID=30;}
+    slabID = ((TObjString*) obja->At(2))->GetString().Atoi();
     
     delete obja;
     
@@ -413,11 +366,16 @@ void CollectSignal(TGeoManager* geo,
     std::map<int, std::vector<int> >& id_hit,
     std::vector<cell>& vec_cell)
 {
+	if(ns_Digit::debug)
+    {
+      std::cout << "time_pe size: " <<  time_pe.size() << std::endl;
+    }
+	
     for(std::map<int, std::vector<double> >::iterator it = time_pe.begin(); it != time_pe.end(); ++it)
     {
       if(it->first < 0)
         continue;
-      
+    
       cell c;
       c.id = it->first;
       c.adc1 = adc[it->first];
@@ -445,11 +403,12 @@ void CollectSignal(TGeoManager* geo,
         dummyLoc[0] = ns_Digit::cxlay[c.lay][c.cel];
         dummyLoc[1] = 0.;
         dummyLoc[2] = ns_Digit::czlay[c.lay];
-        
-        geo->cd(TString::Format(ns_Digit::path_barrel_template,c.mod).Data());
-        
+		TString str = TString::Format(ns_Digit::path_barrel_template ,c.mod);
+       
+        bool chdir = geo->cd(str.Data());
+       
         geo->LocalToMaster(dummyLoc, dummyMas);
-        
+      
         c.x = dummyMas[0];
         c.y = dummyMas[1];
         c.z = dummyMas[2];
@@ -487,10 +446,28 @@ void CollectSignal(TGeoManager* geo,
     }
 }
 
-void init(TGeoManager* geo)
+int init(TGeoManager* geo)
 {
-    TGeoTrd2* mod = (TGeoTrd2*) geo->FindVolumeFast("KLOEBarrelECAL_0_volume_PV")->GetShape();
-    
+	if (!geo)
+	{
+		std::cerr << "TGeoManager* geo not set to a valid  object instance" << std::endl;
+		return -1;
+	}
+	TGeoVolume *vol = geo->FindVolumeFast("KLOEEcalBarrel_volume_PV");
+    if (!vol)
+	{
+		std::cerr << "TGeoVolume not found in geo manager" << std::endl;
+		return -2;
+	}
+	TGeoTrd2* mod = (TGeoTrd2*) (vol->GetShape());
+     if (!mod)
+	{
+		std::cerr << "TGeoTrd2 not found in volume" << std::endl;
+		return -3;
+	}
+	else{
+		std::cout << " TGeoTrd2* mod : " << mod << std::endl;
+	}
     double xmax = mod->GetDx1();
     double xmin = mod->GetDx2();
     double dz = mod->GetDz();
@@ -507,10 +484,11 @@ void init(TGeoManager* geo)
       }
     } 
       
-    TGeoTube* ec = (TGeoTube*) geo->FindVolumeFast("KLOEEndcapECALL_volume_PV")->GetShape();
+    TGeoTube* ec = (TGeoTube*) geo->FindVolumeFast("KLOEEcalEndcap_volume_PV")->GetShape();
     
     ns_Digit::ec_r = ec->GetRmax();
     ns_Digit::ec_dz = ec->GetDz();
+	return 0;
 }
 
 void DigitizeCal(TG4Event* ev, TGeoManager* geo, std::vector<cell>& vec_cell)
@@ -539,8 +517,12 @@ void DigitizeCal(TG4Event* ev, TGeoManager* geo, std::vector<cell>& vec_cell)
       std::cout << "CollectSignal" << std::endl;
     }
     CollectSignal(geo, time_pe, adc, tdc, L, id_hit, vec_cell);
+	if(ns_Digit::debug)
+    {
+      std::cout << "CollectSignal done" << std::endl;
+    }
 }
-
+/*
 void Cluster(TG4Event* ev, TGeoManager* geo, std::map<std::string,std::vector<hit> >& cluster_map)
 {
   cluster_map.clear();
@@ -611,31 +593,46 @@ void DigitizeStt(TG4Event* ev, TGeoManager* geo, std::vector<digit>& digit_vec)
   Cluster(ev, geo, cluster_map);
   Cluster2Digit(cluster_map, digit_vec);
 }
-
-void Digitize(const char* finname, const char* foutname)
+*/
+int Digitize(const char* finname, const char* foutname)
 {
 	  //TChain* t = new TChain("EDepSimEvents","EDepSimEvents");
 	  //t->Add(finname);
 	  //TFile f(t->GetListOfFiles()->At(0)->GetTitle());
     TFile f(finname,"READ");
+	if (! f.IsOpen() )
+	{
+		std::cerr << "File " << finname << " not found!" << std::endl;
+		return -1;
+	}
     TTree* t = (TTree*) f.Get("EDepSimEvents");
+	if (!t)
+	{
+		std::cerr << "Tree EDepSimEvents not found" << std::endl;
+		return -2;
+	}
     TGeoManager* geo = (TGeoManager*) f.Get("EDepSimGeometry"); 
-    TTree* gRooTracker = (TTree*) f.Get("DetSimPassThru/gRooTracker");
-    TTree* InputKinem = (TTree*) f.Get("DetSimPassThru/InputKinem");
-    TTree* InputFiles = (TTree*) f.Get("DetSimPassThru/InputFiles");
-    
-    init(geo);
-    
+	if (!geo)
+	{
+		std::cerr << "TGeoManager EDepSimGeometry not found" << std::endl;
+		return -3;
+	}
+    //TTree* gRooTracker = (TTree*) f.Get("DetSimPassThru/gRooTracker");
+    //TTree* InputKinem = (TTree*) f.Get("DetSimPassThru/InputKinem");
+    //TTree* InputFiles = (TTree*) f.Get("DetSimPassThru/InputFiles");
+    std::cout << "checkpoint #0: Digitize" << std::endl;
+    int retCode = init(geo);
+    std::cout << "checkpoint #1: Digitize" << std::endl;
     TG4Event* ev = new TG4Event;
     t->SetBranchAddress("Event",&ev);
   
-    std::vector<digit> digit_vec;    
+    //std::vector<digit> digit_vec;    
     std::vector<cell> vec_cell;
     
     TFile fout(foutname,"RECREATE");
     TTree tout("tDigit","Digitization");
     tout.Branch("cell","std::vector<cell>",&vec_cell);
-    tout.Branch("Stt","std::vector<digit>",&digit_vec);
+    //tout.Branch("Stt","std::vector<digit>",&digit_vec);
     
     const int nev = t->GetEntries();
     
@@ -649,7 +646,7 @@ void Digitize(const char* finname, const char* foutname)
       std::cout << "\b\b\b\b\b" << std::setw(3) << int(double(i)/nev*100) << "%]" << std::flush;
       
       DigitizeCal(ev, geo, vec_cell);
-      DigitizeStt(ev, geo, digit_vec);
+      //DigitizeStt(ev, geo, digit_vec);
          
       tout.Fill();
     }
@@ -660,12 +657,13 @@ void Digitize(const char* finname, const char* foutname)
     tout.Write();
     geo->Write();
     t->CloneTree()->Write();
-    gRooTracker->CloneTree()->Write();
-    InputKinem->CloneTree()->Write();
-    InputFiles->CloneTree()->Write();
+    //gRooTracker->CloneTree()->Write();
+    //InputKinem->CloneTree()->Write();
+    //InputFiles->CloneTree()->Write();
     fout.Close();
     
     f.Close();
+	return 0;
 }
 
 void help_digit()
@@ -676,6 +674,8 @@ void help_digit()
 
 int main(int argc, char* argv[])
 {
+  
+  gSystem->Load("libStruct.so");
   if(argc != 3)
     help_digit();
   else
