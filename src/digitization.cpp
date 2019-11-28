@@ -153,24 +153,35 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
   if(node == 0) return false;
   
   TString str = node->GetName();
-    
+  TString str2 = g->GetPath();
+  TObjArray* obj = str2.Tokenize("/");
+  //std::cout << "node name: " << str2.Data() << std::endl;
+  
+  int size = obj->GetEntries();
+  if(size < 6) {return false;};
+  
+  str2=((TObjString*) obj->At(5))->GetString();
+  delete obj;
+  
   if(ns_Digit::debug)
   {
-    std::cout << "node name: " << str.Data() << std::endl;
+    std::cout << "node name: " << str2.Data() << std::endl;
   }
 //  if(str.Contains("KLOEEndcapECALL_volume_PV_0") == true || str.Contains("KLOEEndcapECALR_volume_PV_0") == true)
 //  {
 //    return false;
 //  }
-  if(str.Contains("KLOEEcalBarrel") == true && str.Contains("Active") == true)
+  if(str.Contains("volECAL") == true && str.Contains("Active") == true && str.Contains("end") == false)
   {
     TObjArray* obja = str.Tokenize("_");
-    
+    TObjArray* obja2 = str2.Tokenize("_");
+	
     int slabID;
-    modID  = ((TObjString*) obja->At(4))->GetString().Atoi();
-    slabID = ((TObjString*) obja->At(2))->GetString().Atoi();
+    modID  = ((TObjString*) obja2->At(3))->GetString().Atoi();
+    slabID = ((TObjString*) obja->At(1))->GetString().Atoi();
     
     delete obja;
+	delete obja2;
     
     // planeID==0 -> smallest slab
     // planeID==208 -> biggest slab
@@ -223,17 +234,21 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
     
     return true;
   }
-  else if(str.Contains("KLOEEcalEndcap") == true && str.Contains("Active") == true)
+  else if(str.Contains("endvolECAL") == true && str.Contains("Active") == true)
   {
+	//std::cout << "endcap"<< std::endl;
     TObjArray* obja = str.Tokenize("_");
-    
+	//std::cout << "check0"<< std::endl;
+    TObjArray* obja2 = str2.Tokenize("_");
+	//std::cout << "check1"<< std::endl;
     int slabID;
-    modID  = ((TObjString*) obja->At(4))->GetString().Atoi();
+    modID  = ((TObjString*) obja2->At(4))->GetString().Atoi();
 	if (modID==0) {modID=40;}
 	else if (modID==1) {modID=30;}
-    slabID = ((TObjString*) obja->At(2))->GetString().Atoi();
+    slabID = ((TObjString*) obja->At(1))->GetString().Atoi();
     
     delete obja;
+	delete obja2;
     
     // planeID==0 -> smallest slab
     // planeID==208 -> biggest slab
@@ -453,7 +468,7 @@ int init(TGeoManager* geo)
 		std::cerr << "TGeoManager* geo not set to a valid  object instance" << std::endl;
 		return -1;
 	}
-	TGeoVolume *vol = geo->FindVolumeFast("KLOEEcalBarrel_volume_PV");
+	TGeoVolume *vol = geo->FindVolumeFast("ECAL_lv_PV");
     if (!vol)
 	{
 		std::cerr << "TGeoVolume not found in geo manager" << std::endl;
@@ -484,7 +499,7 @@ int init(TGeoManager* geo)
       }
     } 
       
-    TGeoTube* ec = (TGeoTube*) geo->FindVolumeFast("KLOEEcalEndcap_volume_PV")->GetShape();
+    TGeoTube* ec = (TGeoTube*) geo->FindVolumeFast("ECAL_end_lv_PV")->GetShape();
     
     ns_Digit::ec_r = ec->GetRmax();
     ns_Digit::ec_dz = ec->GetDz();
@@ -522,14 +537,14 @@ void DigitizeCal(TG4Event* ev, TGeoManager* geo, std::vector<cell>& vec_cell)
       std::cout << "CollectSignal done" << std::endl;
     }
 }
-/*
+
 void Cluster(TG4Event* ev, TGeoManager* geo, std::map<std::string,std::vector<hit> >& cluster_map)
 {
   cluster_map.clear();
     
-  for(unsigned int j = 0; j < ev->SegmentDetectors["StrawTracker"].size(); j++)
+  for(unsigned int j = 0; j < ev->SegmentDetectors["Straw"].size(); j++)
   {
-    const TG4HitSegment& hseg = ev->SegmentDetectors["StrawTracker"].at(j);
+    const TG4HitSegment& hseg = ev->SegmentDetectors["Straw"].at(j);
     
     double x = 0.5 * (hseg.Start.X() + hseg.Stop.X());
     double y = 0.5 * (hseg.Start.Y() + hseg.Stop.Y());
@@ -593,7 +608,7 @@ void DigitizeStt(TG4Event* ev, TGeoManager* geo, std::vector<digit>& digit_vec)
   Cluster(ev, geo, cluster_map);
   Cluster2Digit(cluster_map, digit_vec);
 }
-*/
+
 int Digitize(const char* finname, const char* foutname)
 {
 	  //TChain* t = new TChain("EDepSimEvents","EDepSimEvents");
@@ -617,22 +632,22 @@ int Digitize(const char* finname, const char* foutname)
 		std::cerr << "TGeoManager EDepSimGeometry not found" << std::endl;
 		return -3;
 	}
-    //TTree* gRooTracker = (TTree*) f.Get("DetSimPassThru/gRooTracker");
-    //TTree* InputKinem = (TTree*) f.Get("DetSimPassThru/InputKinem");
-    //TTree* InputFiles = (TTree*) f.Get("DetSimPassThru/InputFiles");
-    std::cout << "checkpoint #0: Digitize" << std::endl;
-    int retCode = init(geo);
-    std::cout << "checkpoint #1: Digitize" << std::endl;
+    TTree* gRooTracker = (TTree*) f.Get("DetSimPassThru/gRooTracker");
+    TTree* InputKinem = (TTree*) f.Get("DetSimPassThru/InputKinem");
+    TTree* InputFiles = (TTree*) f.Get("DetSimPassThru/InputFiles");
+    //std::cout << "checkpoint #0: Digitize" << std::endl;
+    //int retCode = init(geo);
+    //std::cout << "checkpoint #1: Digitize" << std::endl;
     TG4Event* ev = new TG4Event;
     t->SetBranchAddress("Event",&ev);
   
-    //std::vector<digit> digit_vec;    
+    std::vector<digit> digit_vec;    
     std::vector<cell> vec_cell;
     
     TFile fout(foutname,"RECREATE");
     TTree tout("tDigit","Digitization");
     tout.Branch("cell","std::vector<cell>",&vec_cell);
-    //tout.Branch("Stt","std::vector<digit>",&digit_vec);
+    tout.Branch("Stt","std::vector<digit>",&digit_vec);
     
     const int nev = t->GetEntries();
     
@@ -646,7 +661,7 @@ int Digitize(const char* finname, const char* foutname)
       std::cout << "\b\b\b\b\b" << std::setw(3) << int(double(i)/nev*100) << "%]" << std::flush;
       
       DigitizeCal(ev, geo, vec_cell);
-      //DigitizeStt(ev, geo, digit_vec);
+      DigitizeStt(ev, geo, digit_vec);
          
       tout.Fill();
     }
@@ -657,9 +672,9 @@ int Digitize(const char* finname, const char* foutname)
     tout.Write();
     geo->Write();
     t->CloneTree()->Write();
-    //gRooTracker->CloneTree()->Write();
-    //InputKinem->CloneTree()->Write();
-    //InputFiles->CloneTree()->Write();
+    gRooTracker->CloneTree()->Write();
+    InputKinem->CloneTree()->Write();
+    InputFiles->CloneTree()->Write();
     fout.Close();
     
     f.Close();

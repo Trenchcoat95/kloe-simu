@@ -2,6 +2,7 @@
 #include <TFile.h>
 #include <TGeoManager.h>
 #include <TDirectoryFile.h>
+#include <TSystem.h>
 
 #include "TG4Event.h"
 #include "TG4HitSegment.h"
@@ -271,11 +272,14 @@ int fitLinear(int n, const std::vector<double>& x, const std::vector<double>& y,
 
 void TrackFind(TG4Event* ev, std::vector<digit>* vec_digi, std::vector<track>& vec_tr)
 {
-  vec_tr.clear();    
-          
+  vec_tr.clear();
+  
+  	
+  
   //for(unsigned int j = 0; j < ev->Primaries[0].Particles.size(); j++)
   for(unsigned int j = 0; j < ev->Trajectories.size(); j++)
   {
+	if(ns_Digit::debug){ std::cout<<"Track number: "<<j<<std::endl; }
     track tr;
     
     reset(tr);
@@ -286,7 +290,7 @@ void TrackFind(TG4Event* ev, std::vector<digit>* vec_digi, std::vector<track>& v
     {
       for(unsigned int m = 0; m < vec_digi->at(k).hindex.size(); m++)
       {
-        const TG4HitSegment& hseg = ev->SegmentDetectors["StrawTracker"].at(vec_digi->at(k).hindex.at(m)); 
+        const TG4HitSegment& hseg = ev->SegmentDetectors["Straw"].at(vec_digi->at(k).hindex.at(m)); 
                
         //if(hseg.PrimaryId == tr.tid)
         //{
@@ -778,13 +782,24 @@ void Reconstruct(const char* fIn)
     
     vec_tr.clear();
     vec_cl.clear();
-    
+	
+    if(ns_Digit::debug){ std::cout<<"Starting Reconstruction"<<std::endl; }
+	
     TrackFind(ev, vec_digi, vec_tr);
+	if(ns_Digit::debug){ std::cout<<"TrackFind done"<<std::endl; }
+	
     TrackFit(vec_tr);
+	if(ns_Digit::debug){ std::cout<<"TrackFit done"<<std::endl; }
+	
     //PreCluster(vec_cell, vec_cl);
     //Filter(vec_cl);
+	
     PidBasedClustering(ev, vec_cell, vec_cl);
+	if(ns_Digit::debug){ std::cout<<"PidBasedClustering done"<<std::endl; }
+	
     Merge(vec_cl);
+	if(ns_Digit::debug){ std::cout<<"Merge done"<<std::endl; }
+	
     tout.Fill();
   }
   std::cout << "\b\b\b\b\b" << std::setw(3) << 100 << "%]" << std::flush;
@@ -811,6 +826,7 @@ void help_reco()
 
 int main(int argc, char* argv[])
 {
+  gSystem->Load("libStruct.so");
   if(argc != 2)
     help_reco();
   else

@@ -1201,8 +1201,8 @@ namespace {
 0
     };
     static const char* includePaths[] = {
-"/mnt/c/Linux/root6/root/include",
-"/mnt/c/Linux/root6/root/include",
+"/mnt/c/Linux/root6/root-bin/include",
+"/mnt/c/Linux/root6/root-bin/include",
 "/mnt/c/Linux/Dune/kloe-simu/include/",
 0
     };

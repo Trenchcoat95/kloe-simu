@@ -33,11 +33,17 @@ namespace ns_Digit {
   
   double ec_r;
   double ec_dz;
-  
+/*  
   const char* path_ECAL_template = "volWorld_PV";
   const char* path_barrel_template = "volWorld_PV_1/volKLOE_PV_0/KLOEEcalBarrel_volume_PV_%d";
   const char* path_endcapL_template = "volWorld_PV_1/volKLOE_PV_0/KLOEEcalEndcap_volume_PV_0";
   const char* path_endcapR_template = "volWorld_PV_1/volKLOE_PV_0/KLOEEcalEndcap_volume_PV_1";
+*/
+
+  const char* path_ECAL_template = "volWorld_PV";
+  const char* path_barrel_template = "volWorld_PV_1/rockBox_lv_PV_0/volDetEnclosure_PV_0/volKLOE_PV_0/kloe_calo_volume_PV_0/ECAL_lv_PV_%d";
+  const char* path_endcapL_template = "volWorld_PV_1/rockBox_lv_PV_0/volDetEnclosure_PV_0/volKLOE_PV_0/kloe_calo_volume_PV_0/ECAL_end_lv_PV_0";
+  const char* path_endcapR_template = "volWorld_PV_1/rockBox_lv_PV_0/volDetEnclosure_PV_0/volKLOE_PV_0/kloe_calo_volume_PV_0/ECAL_end_lv_PV_1";
   
   const double tscin = 3.08;
   const double tscex = 0.588;
