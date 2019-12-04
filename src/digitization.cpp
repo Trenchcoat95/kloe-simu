@@ -587,7 +587,7 @@ void Cluster2Digit(std::map<std::string,std::vector<hit> >& cluster_map, std::ve
       d.de += it->second[k].de;
     }
     
-    d.hor = (d.det.find("STTPlane1FULL") != std::string::npos) ? false : true;
+    d.hor = (d.det.find("hor") != std::string::npos) ? false : true;
     
     std::sort(it->second.begin(), it->second.end(), isHitBefore);
     
