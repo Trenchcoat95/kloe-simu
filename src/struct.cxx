@@ -237,7 +237,7 @@ namespace ROOT {
       ::particle *ptr = 0;
       static ::TVirtualIsAProxy* isa_proxy = new ::TIsAProxy(typeid(::particle));
       static ::ROOT::TGenericClassInfo 
-         instance("particle", "struct.h", 90,
+         instance("particle", "struct.h", 93,
                   typeid(::particle), ::ROOT::Internal::DefineBehavior(ptr, ptr),
                   &particle_Dictionary, isa_proxy, 4,
                   sizeof(::particle) );
@@ -282,7 +282,7 @@ namespace ROOT {
       ::event *ptr = 0;
       static ::TVirtualIsAProxy* isa_proxy = new ::TIsAProxy(typeid(::event));
       static ::ROOT::TGenericClassInfo 
-         instance("event", "struct.h", 126,
+         instance("event", "struct.h", 129,
                   typeid(::event), ::ROOT::Internal::DefineBehavior(ptr, ptr),
                   &event_Dictionary, isa_proxy, 4,
                   sizeof(::event) );

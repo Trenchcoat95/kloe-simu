@@ -3,6 +3,7 @@
 #include <TDatabasePDG.h>
 #include <TParticlePDG.h>
 #include <TDirectoryFile.h>
+#include <TSystem.h>
 
 #include "TG4Event.h"
 #include "TG4HitSegment.h"
@@ -921,6 +922,7 @@ void help_ana()
 
 int main(int argc, char* argv[])
 {
+  gSystem->Load("libStruct.so");
   if(argc != 2)
     help_ana();
   else

@@ -270,7 +270,7 @@ int fitLinear(int n, const std::vector<double>& x, const std::vector<double>& y,
     return 0;
 }
 
-void TrackFind(TG4Event* ev, std::vector<digit>* vec_digi, std::vector<track>& vec_tr)
+void TrackFind(TG4Event* ev, TGeoManager* g, std::vector<digit>* vec_digi, std::vector<track>& vec_tr)
 {
   vec_tr.clear();
   
@@ -279,12 +279,52 @@ void TrackFind(TG4Event* ev, std::vector<digit>* vec_digi, std::vector<track>& v
   //for(unsigned int j = 0; j < ev->Primaries[0].Particles.size(); j++)
   for(unsigned int j = 0; j < ev->Trajectories.size(); j++)
   {
-	if(ns_Digit::debug){ std::cout<<"Track number: "<<j<<std::endl; }
+	
     track tr;
     
     reset(tr);
-          
+      
+    tr.pass = 0;
+	tr.passmu = 0;
     tr.tid = ev->Trajectories.at(j).TrackId;
+	tr.pid = ev->Trajectories.at(j).PDGCode;
+	
+	for (unsigned int p = 0; p < ev->Trajectories.at(j).Points.size(); p++)
+	{
+		TG4TrajectoryPoint point = ev->Trajectories.at(j).Points.at(p);
+		double x = point.Position.X();
+		double y = point.Position.Y();
+		double z = point.Position.Z();
+		
+		
+		
+		
+		
+		
+		TGeoNode* node = g->FindNode(x,y,z);
+		TString path = g->GetPath();
+		if(p==0){ std::cout<<"Track number: "<<j<<std::endl; 
+		          std :: cout <<"Point number: " << p << std::endl;
+				  std::cout<<"x="<< x << "  y=" << y << "  z=" << z << std::endl;
+				  std::cout<<"node = "<< path << std::endl;
+				  std::cout<<"pdg = "<< tr.pid << "\n" <<std::endl;}
+		 
+		
+		
+		
+		if( path.Contains("ECAL_lv_PV_14") == true || path.Contains("ECAL_lv_PV_15") == true || path.Contains("ECAL_lv_PV_16") == true ||
+		    path.Contains("ECAL_lv_PV_17") == true || path.Contains("ECAL_lv_PV_18") == true || path.Contains("ECAL_lv_PV_19") == true ||
+            path.Contains("ECAL_lv_PV_20") == true || path.Contains("ECAL_lv_PV_21") == true || path.Contains("ECAL_lv_PV_22") == true  ) 
+			{
+				tr.pass = 1;
+				//std::cout << "particle is passing through: " << path << "  " ;
+				//std::cout << "changing pass attribute to " << tr.pass << std::endl ;
+				break;
+				
+			}			 
+	}
+	
+	if(tr.pid == 13 && tr.pass == 1) { tr.passmu = 1; }
     
     for(unsigned int k = 0; k < vec_digi->size(); k++)
     {
@@ -676,13 +716,24 @@ void Merge(std::vector<cluster>& vec_cl)
       dir = (zouter - zinner)*(touter - tinner)/TMath::Abs((touter - tinner)*(zouter - zinner));
     else
       dir = 0.;
+  
     
-    double ax = (nlayer * sxz - sz*sx)/(nlayer*sz2 - sz*sz);
+	/*std::cout << "nlayer=" << nlayer << "  sxz=" << sxz <<  "  sz=" << sz << "  sx=" << sx << "  sz2=" << sz2 <<std::endl;
+	double num = nlayer * sxz - sz*sx;
+	double den = nlayer * sz2 - sz*sz;
+	std::cout << "nlayer*sxz=" << nlayer * sxz << "   sz*sx=" << sz*sx <<std::endl;
+	std::cout << "nlayer*sz2=" << nlayer * sz2 << "   sz*sz=" << sz*sz <<std::endl;
+	std::cout << "num=" << num << "   den=" << den <<std::endl;
+	*/
+	
+    double ax = (nlayer * sxz - sz*sx) /(nlayer*sz2 - sz*sz);
     double bx = (sx*sz2 - sz*sxz)/(nlayer*sz2 - sz*sz);
     double ay = (nlayer * syz - sz*sy)/(nlayer*sz2 - sz*sz);
     double by = (sy*sz2 - sz*syz)/(nlayer*sz2 - sz*sz);
     
     double mod = TMath::Sqrt(1+ax*ax+ay*ay);
+	
+	//std::cout << "ax=" << ax << "  mod=" << mod <<  "  dir=" << dir << std::endl;
     
     vec_cl.at(i).sx = dir * ax/mod;
     vec_cl.at(i).sy = dir * ay/mod;
@@ -764,6 +815,7 @@ void Reconstruct(const char* fIn)
   
   std::vector<track> vec_tr;
   std::vector<cluster> vec_cl;
+  
 
   TTree tout("tReco","tReco");
   tout.Branch("track","std::vector<track>",&vec_tr);
@@ -771,12 +823,14 @@ void Reconstruct(const char* fIn)
     
   const int nev = t->GetEntries();
   
-  std::cout << "Events: " << nev << " [";
-  std::cout << std::setw(3) << int(0) << "%]" << std::flush;
+  //std::cout << "Events: " << nev << " [";
+  //std::cout << std::setw(3) << int(0) << "%]" << std::flush;
   
   for(int i = 0; i < nev; i++)
   {
-    std::cout << "\b\b\b\b\b" << std::setw(3) << int(double(i)/nev*100) << "%]" << std::flush;
+    //std::cout << "\b\b\b\b\b" << std::setw(3) << int(double(i)/nev*100) << "%]" << std::flush;
+	
+	std::cout << "entry number =" << i << std::endl;
     
     t->GetEntry(i);
     
@@ -785,7 +839,7 @@ void Reconstruct(const char* fIn)
 	
     if(ns_Digit::debug){ std::cout<<"Starting Reconstruction"<<std::endl; }
 	
-    TrackFind(ev, vec_digi, vec_tr);
+    TrackFind(ev, geo, vec_digi, vec_tr);
 	if(ns_Digit::debug){ std::cout<<"TrackFind done"<<std::endl; }
 	
     TrackFit(vec_tr);
@@ -802,8 +856,8 @@ void Reconstruct(const char* fIn)
 	
     tout.Fill();
   }
-  std::cout << "\b\b\b\b\b" << std::setw(3) << 100 << "%]" << std::flush;
-  std::cout << std::endl;
+  //std::cout << "\b\b\b\b\b" << std::setw(3) << 100 << "%]" << std::flush;
+  //std::cout << std::endl;
   
   vec_tr.clear();
   vec_cl.clear();

@@ -155,7 +155,8 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
   TString str = node->GetName();
   TString str2 = g->GetPath();
   TObjArray* obj = str2.Tokenize("/");
-  //std::cout << "node name: " << str2.Data() << std::endl;
+  
+  
   
   int size = obj->GetEntries();
   if(size < 6) {return false;};
@@ -175,6 +176,8 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
   {
     TObjArray* obja = str.Tokenize("_");
     TObjArray* obja2 = str2.Tokenize("_");
+	//std::cout << "node name: " << str.Data() << std::endl;
+    //std::cout << "path: " << str2.Data() << std::endl;
 	
     int slabID;
     modID  = ((TObjString*) obja2->At(3))->GetString().Atoi();
@@ -455,6 +458,10 @@ void CollectSignal(TGeoManager* geo,
         c.x = dummyMas[0];
         c.y = dummyMas[1];
         c.z = dummyMas[2];
+		
+		//std::cout<< ns_Digit::ec_r << " " << ns_Digit::czlay[c.lay] << " " << c.mod << " " << c.cel << " " << c.lay << " " << c.x << " " << c.y << " " << c.z << std::endl;
+		
+		
       }
       
       vec_cell.push_back(c);
@@ -481,7 +488,7 @@ int init(TGeoManager* geo)
 		return -3;
 	}
 	else{
-		std::cout << " TGeoTrd2* mod : " << mod << std::endl;
+		//std::cout << " TGeoTrd2* mod : " << mod << std::endl;
 	}
     double xmax = mod->GetDx1();
     double xmin = mod->GetDx2();
@@ -499,10 +506,28 @@ int init(TGeoManager* geo)
       }
     } 
       
-    TGeoTube* ec = (TGeoTube*) geo->FindVolumeFast("ECAL_end_lv_PV")->GetShape();
+    //TGeoTube* ec = (TGeoTube*) geo->FindVolumeFast("ECAL_end_lv_PV")->GetShape();
+	
+	TGeoVolume *volec = geo->FindVolumeFast("ECAL_end_lv_PV");
+    if (!volec)
+	{
+		std::cerr << "TGeoVolume not found in geo manager" << std::endl;
+		return -2;
+	}
+	TGeoTube* modec = (TGeoTube*) (volec->GetShape());
+     if (!modec)
+	{
+		std::cerr << "TGeoTrd2 not found in volume" << std::endl;
+		return -3;
+	}
+	else{
+		//std::cout << " TGeoTube* mod : " << mod << std::endl;
+	}
     
-    ns_Digit::ec_r = ec->GetRmax();
-    ns_Digit::ec_dz = ec->GetDz();
+    ns_Digit::ec_r = modec->GetRmax();
+    ns_Digit::ec_dz = modec->GetDz();
+	
+	//std::cout << "ec_r=" << ns_Digit::ec_r << "    ec_dz=" << ns_Digit::ec_dz << std::endl;
 	return 0;
 }
 
@@ -636,7 +661,7 @@ int Digitize(const char* finname, const char* foutname)
     TTree* InputKinem = (TTree*) f.Get("DetSimPassThru/InputKinem");
     TTree* InputFiles = (TTree*) f.Get("DetSimPassThru/InputFiles");
     //std::cout << "checkpoint #0: Digitize" << std::endl;
-    //int retCode = init(geo);
+    int retCode = init(geo);
     //std::cout << "checkpoint #1: Digitize" << std::endl;
     TG4Event* ev = new TG4Event;
     t->SetBranchAddress("Event",&ev);

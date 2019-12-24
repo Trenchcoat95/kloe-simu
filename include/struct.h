@@ -70,6 +70,9 @@ struct digit {
 
 struct track {
   int tid;
+  int pid;
+  bool pass;
+  bool passmu;
   double yc;
   double zc;
   double r;
