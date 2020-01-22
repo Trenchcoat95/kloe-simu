@@ -192,6 +192,8 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
     
     if (planeID > 4) planeID = 4;
     
+	planeID = 4 - planeID; 
+	
     double Pmaster[3];
     double Plocal[3];
     Pmaster[0] = x;
@@ -258,6 +260,8 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
     planeID = slabID/40;
     
     if (planeID > 4) planeID = 4;
+    
+	planeID = 4 - planeID; 
     
     double Pmaster[3];
     double Plocal[3];
@@ -490,15 +494,15 @@ int init(TGeoManager* geo)
 	else{
 		//std::cout << " TGeoTrd2* mod : " << mod << std::endl;
 	}
-    double xmax = mod->GetDx1();
-    double xmin = mod->GetDx2();
+    double xmax = mod->GetDx2();
+    double xmin = mod->GetDx1();
     double dz = mod->GetDz();
     
     for(int i = 0; i < ns_Digit::nLay; i++)
     {
       ns_Digit::czlay[i] = (ns_Digit::dzlay[i] + ns_Digit::dzlay[i+1]) - ns_Digit::dzlay[0];
       
-      double dx = xmax - (xmax - xmin)/dz * (0.5 * (ns_Digit::dzlay[i] + ns_Digit::dzlay[i+1]));
+      double dx = xmin + (xmax - xmin)/dz * (0.5 * (ns_Digit::dzlay[i] + ns_Digit::dzlay[i+1]));
       
       for(int j = 0; j < ns_Digit::nCel; j++)
       {

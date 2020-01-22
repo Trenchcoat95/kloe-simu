@@ -303,12 +303,13 @@ void TrackFind(TG4Event* ev, TGeoManager* g, std::vector<digit>* vec_digi, std::
 		
 		TGeoNode* node = g->FindNode(x,y,z);
 		TString path = g->GetPath();
+		/*
 		if(p==0){ std::cout<<"Track number: "<<j<<std::endl; 
 		          std :: cout <<"Point number: " << p << std::endl;
 				  std::cout<<"x="<< x << "  y=" << y << "  z=" << z << std::endl;
 				  std::cout<<"node = "<< path << std::endl;
 				  std::cout<<"pdg = "<< tr.pid << "\n" <<std::endl;}
-		 
+		*/ 
 		
 		
 		
@@ -823,14 +824,14 @@ void Reconstruct(const char* fIn)
     
   const int nev = t->GetEntries();
   
-  //std::cout << "Events: " << nev << " [";
-  //std::cout << std::setw(3) << int(0) << "%]" << std::flush;
+  std::cout << "Events: " << nev << " [";
+  std::cout << std::setw(3) << int(0) << "%]" << std::flush;
   
   for(int i = 0; i < nev; i++)
   {
-    //std::cout << "\b\b\b\b\b" << std::setw(3) << int(double(i)/nev*100) << "%]" << std::flush;
+    std::cout << "\b\b\b\b\b" << std::setw(3) << int(double(i)/nev*100) << "%]" << std::flush;
 	
-	std::cout << "entry number =" << i << std::endl;
+	//std::cout << "entry number =" << i << std::endl;
     
     t->GetEntry(i);
     
@@ -856,8 +857,8 @@ void Reconstruct(const char* fIn)
 	
     tout.Fill();
   }
-  //std::cout << "\b\b\b\b\b" << std::setw(3) << 100 << "%]" << std::flush;
-  //std::cout << std::endl;
+  std::cout << "\b\b\b\b\b" << std::setw(3) << 100 << "%]" << std::flush;
+  std::cout << std::endl;
   
   vec_tr.clear();
   vec_cl.clear();

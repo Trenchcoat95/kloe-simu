@@ -16,13 +16,13 @@
 #include <iostream>
 #include <map>
 
-#include "/wd/dune-it/enurec/analysis/kloe-simu/loader/loader.C"
+#include "/mnt/c/Linux/Dune/kloe-simu/include/struct.h"
 
-#include "/wd/sw/EDEPSIM/edep-sim.binary/include/EDepSim/TG4Event.h"
-#include "/wd/sw/EDEPSIM/edep-sim.binary/include/EDepSim/TG4HitSegment.h"
+#include "/mnt/c/Linux/Dune/edep-sim/edep-gcc-7-x86_64-linux-gnu/include/EDepSim/TG4Event.h"
+#include "/mnt/c/Linux/Dune/edep-sim/edep-gcc-7-x86_64-linux-gnu/include/EDepSim/TG4HitSegment.h"
 
 namespace ns_draw {
-  const bool debug = false;
+  const bool debug = true;
   
   static const int nMod = 24;
   static const int nLay = 5;
@@ -71,16 +71,16 @@ void init(const char* ifile)
   gStyle->SetPalette(palette);
 
   f = new TFile(ifile);
-  TTree* tEvent = reinterpret_cast<TTree*>(f->Get("tEvent"));
+  //TTree* tEvent = reinterpret_cast<TTree*>(f->Get("tEvent"));
   TTree* tReco = reinterpret_cast<TTree*>(f->Get("tReco"));
   TTree* tDigit = reinterpret_cast<TTree*>(f->Get("tDigit"));
   TTree* tEdep = reinterpret_cast<TTree*>(f->Get("EDepSimEvents"));
   TTree* tGenie = reinterpret_cast<TTree*>(f->Get("gRooTracker"));
 
-  tEvent->AddFriend(tReco);
-  tEvent->AddFriend(tDigit);
-  tEvent->AddFriend(tEdep);
-  tEvent->AddFriend(tGenie);
+  //tEvent->AddFriend(tReco);
+  tReco->AddFriend(tDigit);
+  tReco->AddFriend(tEdep);
+  tReco->AddFriend(tGenie);
   
   tEdep->SetBranchAddress("Event",&ev);
   tDigit->SetBranchAddress("cell",&vec_cell);
@@ -88,28 +88,29 @@ void init(const char* ifile)
   tReco->SetBranchAddress("track",&vec_tr);
   tReco->SetBranchAddress("cluster",&vec_cl);
 
-  t = tEvent;
+  t = tReco;
 
   geo = reinterpret_cast<TGeoManager*>(f->Get("EDepSimGeometry"));
   
   double dummyLoc[3];
   double dummyMas[3];
   
-  geo->cd("volWorld_PV/volDetEnclosure_PV_0/volKLOEFULLECALSENSITIVE_EXTTRK_NEWGAP_PV_0/KLOETrackingRegion_volume_PV_0");
+  geo->cd("volWorld_PV/rockBox_lv_PV_0/volDetEnclosure_PV_0/volKLOE_PV_0/volSTTFULL_PV_0");
   
   dummyLoc[0] = 0.;
   dummyLoc[1] = 0.;
   dummyLoc[2] = 0.;
   geo->LocalToMaster(dummyLoc, centerKLOE);
   
-  double dzlay[nLay+1] = {115, 115-22, 115-22-22, 115-22-22-22, 115-22-22-22-22, 115-22-22-22-22-27};
+  //double dzlay[nLay+1] = {115, 115-27, 115-27-22, 115-27-22-22, 115-27-22-22-22, 115-27-22-22-22-22};
+  double dzlay[nLay+1] = {115-27-22-22-22-22, 115-27-22-22-22, 115-27-22-22, 115-27-22, 115-27, 115};
   double dx1[nLay];
   double dx2[nLay];
   
-  TGeoTrd2* mod = (TGeoTrd2*) geo->FindVolumeFast("KLOEBarrelECAL_0_volume_PV")->GetShape();
+  TGeoTrd2* mod = (TGeoTrd2*) geo->FindVolumeFast("ECAL_lv_PV")->GetShape();
   
-  double xmax = mod->GetDx1();
-  double xmin = mod->GetDx2();
+  double xmax = mod->GetDx2();
+  double xmin = mod->GetDx1();
   double dz = mod->GetDz();
   
   if(debug)
@@ -119,8 +120,13 @@ void init(const char* ifile)
   
   for(int i = 0; i < nLay; i++)
   {    
-    dx1[i] = xmax - (xmax - xmin)/dz * dzlay[i];
-    dx2[i] = xmax - (xmax - xmin)/dz * dzlay[i+1];
+    //dx1[i] = xmax - (xmax - xmin)/dz * dzlay[i];
+    //dx2[i] = xmax - (xmax - xmin)/dz * dzlay[i+1];
+    dx1[i] = xmin + (xmax - xmin)/dz * dzlay[i];
+    dx2[i] = xmin + (xmax - xmin)/dz * dzlay[i+1];
+	
+	std::cout << i << " " << xmin << " " << xmax << " " << dx1[i] << " " << dzlay[i] << std::endl;
+	std::cout << i << " " << xmin << " " << xmax << " " << dx2[i] << " " << dzlay[i+1] << std::endl;
   }
   
   if(debug)
@@ -155,7 +161,7 @@ void init(const char* ifile)
     }
   }
   
-  const char* path_template = "volWorld_PV/volDetEnclosure_PV_0/volKLOEFULLECALSENSITIVE_EXTTRK_NEWGAP_PV_0/KLOEBarrelECAL_%d_volume_PV_0";
+  const char* path_template = "volWorld_PV/rockBox_lv_PV_0/volDetEnclosure_PV_0/volKLOE_PV_0/kloe_calo_volume_PV_0/ECAL_lv_PV_%d";
   
   double CellMasterY[nCellModule][4];
   double CellMasterZ[nCellModule][4];
@@ -184,7 +190,7 @@ void init(const char* ifile)
       {
         
         int index = i * (nLay * nCel) + j * (nCel) + k;
-        int id = k + 100 * j + 1000 * i;
+        int id = k + 100 * (4-j) + 1000 * i;
         
         int local_index = j*nCel+k;
         
@@ -225,7 +231,8 @@ void init(const char* ifile)
         if(debug)
         {
           TGraph* gr1 = new TGraph(4, CellMasterZ[local_index], CellMasterY[local_index]);
-          gr1->Draw("f");
+		  gr1->SetFillColor(kBlack);
+		  gr1->Draw("f");
         }
       }
     }
@@ -240,7 +247,7 @@ void init(const char* ifile)
                             centerKLOE[0] + 2500);
   }
   
-  TGeoTube* ec = (TGeoTube*) geo->FindVolumeFast("KLOEEndcapECALL_volume_PV")->GetShape();
+  TGeoTube* ec = (TGeoTube*) geo->FindVolumeFast("ECAL_end_lv_PV")->GetShape();
   
   double rmax = ec->GetRmax();
   double rmin = ec->GetRmin();
@@ -248,7 +255,7 @@ void init(const char* ifile)
   
   double dummyLoc_ec[4][3];
   
-  const char* path_endcapR_template = "volWorld_PV/volDetEnclosure_PV_0/volKLOEFULLECALSENSITIVE_EXTTRK_NEWGAP_PV_0/KLOEEndcapECALR_volume_PV_0";
+  const char* path_endcapR_template = "volWorld_PV/rockBox_lv_PV_0/volDetEnclosure_PV_0/volKLOE_PV_0/kloe_calo_volume_PV_0/ECAL_end_lv_PV_1";
   
   geo->cd(path_endcapR_template);
   
@@ -256,25 +263,25 @@ void init(const char* ifile)
   {
     for(int k = 0; k < nCel_ec; k++)
     {
-      int id = k + 100 * j + 1000 * 30;
+      int id = k + 100 * (4-j) + 1000 * 30;
       
       calocell[id].id = id;
       
       dummyLoc_ec[0][0] = rmax / 45. * k - rmax;
       dummyLoc_ec[0][1] = 0.;
-      dummyLoc_ec[0][2] = dz - 2 * dzlay[j];
+      dummyLoc_ec[0][2] = -dz + 2 * dzlay[j];
       
       dummyLoc_ec[1][0] = rmax / 45. * k - rmax;
       dummyLoc_ec[1][1] = 0.;
-      dummyLoc_ec[1][2] = dz - 2 * dzlay[j+1];
+      dummyLoc_ec[1][2] = -dz + 2 * dzlay[j+1];
       
       dummyLoc_ec[2][0] = rmax / 45. * (k + 1) - rmax;
       dummyLoc_ec[2][1] = 0.;
-      dummyLoc_ec[2][2] = dz - 2 * dzlay[j+1];
+      dummyLoc_ec[2][2] = -dz + 2 * dzlay[j+1];
       
       dummyLoc_ec[3][0] = rmax / 45. * (k + 1) - rmax;
       dummyLoc_ec[3][1] = 0.;
-      dummyLoc_ec[3][2] = dz - 2 * dzlay[j];
+      dummyLoc_ec[3][2] = -dz + 2 * dzlay[j];
       
       for(int m = 0; m < 4; m++)
       {
@@ -292,19 +299,20 @@ void init(const char* ifile)
       if(debug)
       {
         TGraph* gr1 = new TGraph(4, calocell[id].Z, calocell[id].Y);
+		gr1->SetFillColor(kBlack);
         gr1->Draw("f");
       }
     }
   }
   
-  const char* path_endcapL_template = "volWorld_PV/volDetEnclosure_PV_0/volKLOEFULLECALSENSITIVE_EXTTRK_NEWGAP_PV_0/KLOEEndcapECALL_volume_PV_0";
+  const char* path_endcapL_template = "volWorld_PV/rockBox_lv_PV_0/volDetEnclosure_PV_0/volKLOE_PV_0/kloe_calo_volume_PV_0/ECAL_end_lv_PV_0";
   geo->cd(path_endcapL_template);
   
   for(int j = 0; j < nLay_ec; j++)
   {
     for(int k = 0; k < nCel_ec; k++)
     {
-      int id = k + 100 * j + 1000 * 40;
+      int id = k + 100 * (4-j) + 1000 * 40;
       
       calocell[id].id = id;
       
@@ -340,6 +348,7 @@ void init(const char* ifile)
       if(debug)
       {
         TGraph* gr1 = new TGraph(4, calocell[id].Z, calocell[id].Y);
+		gr1->SetFillColor(kBlack);
         gr1->Draw("f");
       }
     }
@@ -465,11 +474,11 @@ void show(int index, bool showtrj = true, bool showfit = true, bool showdig = tr
       
       for(unsigned int j = 0; j < ev->Trajectories[i].Points.size(); j++)
       {
-        tr_zy->SetPoint(j, ev->Trajectories[i].Points[j].Position.Z(),ev->Trajectories[i].Points[j].Position.Y());
-        tr_zx->SetPoint(j, ev->Trajectories[i].Points[j].Position.Z(),ev->Trajectories[i].Points[j].Position.X());
+        tr_zy->SetPoint(j, ev->Trajectories[i].Points[j].GetPosition().Z(),ev->Trajectories[i].Points[j].GetPosition().Y());
+        tr_zx->SetPoint(j, ev->Trajectories[i].Points[j].GetPosition().Z(),ev->Trajectories[i].Points[j].GetPosition().X());
       }
       
-      switch(ev->Trajectories[i].PDGCode)
+      switch(ev->Trajectories[i].GetPDGCode())
       {
         // photons
         case 22:
@@ -669,9 +678,9 @@ void showPri(int index)
   for(unsigned int i = 0; i < ev->Primaries.at(0).Particles.size(); i++)
   {
     TVector3 mom;
-    mom.SetX(ev->Primaries.at(0).Particles.at(i).Momentum.X());
-    mom.SetY(ev->Primaries.at(0).Particles.at(i).Momentum.Y());
-    mom.SetZ(ev->Primaries.at(0).Particles.at(i).Momentum.Z());
+    mom.SetX(ev->Primaries.at(0).Particles.at(i).GetMomentum().X());
+    mom.SetY(ev->Primaries.at(0).Particles.at(i).GetMomentum().Y());
+    mom.SetZ(ev->Primaries.at(0).Particles.at(i).GetMomentum().Z());
     
     double pXY = TMath::Sqrt(mom.X()*mom.X()+mom.Y()*mom.Y());
     double pXZ = TMath::Sqrt(mom.X()*mom.X()+mom.Z()*mom.Z());
@@ -686,11 +695,11 @@ void showPri(int index)
       
     pmom.push_back(mom);
     
-    std::cout << std::setw(10) << ev->Primaries.at(0).Particles.at(i).PDGCode << " |" <<
-      std::setw(10) << ev->Primaries.at(0).Particles.at(i).Momentum.X() << " |" <<
-      std::setw(10) << ev->Primaries.at(0).Particles.at(i).Momentum.Y() << " |" <<
-      std::setw(10) << ev->Primaries.at(0).Particles.at(i).Momentum.Z() << " |" <<
-      std::setw(10) << ev->Primaries.at(0).Particles.at(i).Momentum.T() << " |" << std::endl;
+    std::cout << std::setw(10) << ev->Primaries.at(0).Particles.at(i).GetPDGCode() << " |" <<
+      std::setw(10) << ev->Primaries.at(0).Particles.at(i).GetMomentum().X() << " |" <<
+      std::setw(10) << ev->Primaries.at(0).Particles.at(i).GetMomentum().Y() << " |" <<
+      std::setw(10) << ev->Primaries.at(0).Particles.at(i).GetMomentum().Z() << " |" <<
+      std::setw(10) << ev->Primaries.at(0).Particles.at(i).GetMomentum().T() << " |" << std::endl;
   }
   std::cout << "=============================================================" << std::endl;
   
@@ -699,7 +708,7 @@ void showPri(int index)
   {
     TArrow* par = new TArrow(0.,0.,pmom.at(i).X()/maxpXY,pmom.at(i).Y()/maxpXY,0.01,"|>");
     
-    switch(ev->Primaries.at(0).Particles.at(i).PDGCode)
+    switch(ev->Primaries.at(0).Particles.at(i).GetPDGCode())
     {
       // photons
       case 22:
@@ -760,7 +769,7 @@ void showPri(int index)
   {
     TArrow* par = new TArrow(0.,0.,pmom.at(i).Z()/maxpYZ,pmom.at(i).Y()/maxpYZ,0.01,"|>");
     
-    switch(ev->Primaries.at(0).Particles.at(i).PDGCode)
+    switch(ev->Primaries.at(0).Particles.at(i).GetPDGCode())
     {
       // photons
       case 22:
@@ -821,7 +830,7 @@ void showPri(int index)
   {
     TArrow* par = new TArrow(0.,0.,pmom.at(i).Z()/maxpXZ,pmom.at(i).X()/maxpXZ,0.01,"|>");
     
-    switch(ev->Primaries.at(0).Particles.at(i).PDGCode)
+    switch(ev->Primaries.at(0).Particles.at(i).GetPDGCode())
     {
       // photons
       case 22:

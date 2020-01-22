@@ -27,7 +27,8 @@ namespace ns_Digit {
   static const int nLay = 5;
   static const int nCel = 12;
     
-  double dzlay[nLay+1] = {115, 115-27, 115-27-22, 115-27-22-22, 115-27-22-22-22, 115-27-22-22-22-22};
+  //double dzlay[nLay+1] = {115, 115-27, 115-27-22, 115-27-22-22, 115-27-22-22-22, 115-27-22-22-22-22};
+  double dzlay[nLay+1] = {115-27-22-22-22-22, 115-27-22-22-22, 115-27-22-22, 115-27-22, 115-27, 115};
   double czlay[nLay];
   double cxlay[nLay][nCel];
   

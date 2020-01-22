@@ -30,7 +30,7 @@
 // Time ns
 
 
-void LayerTime(std::vector<cell>* vec_cell, double tlay [5] ,double en [5], double pe [5], double & tcell )
+void LayerTime(TH1D* hEcell,std::vector<cell>* vec_cell, double tlay [5] ,double en [5], double pe [5], double & tcell )
 {
 	//CellTime(vec_cell, vec_celltime);
 	int ncell = vec_cell->size(); 
@@ -51,6 +51,7 @@ void LayerTime(std::vector<cell>* vec_cell, double tlay [5] ,double en [5], doub
 		std::vector<double> pe2= c.pe_time2;
 		//std::cout<<"planeID:"<<planeID<<std::endl;
 		//std::cout<<"t0:"<<c.t0<<std::endl;
+		hEcell->Fill(c.adc1+c.adc2);
 		
 		if (planeID<=4 and t0>0)
 		{		
@@ -83,7 +84,7 @@ void LayerTime(std::vector<cell>* vec_cell, double tlay [5] ,double en [5], doub
 
 double RelativeTime(std::vector<cell>* vec_cell,
                     TH1D* ht01,TH1D* ht02,TH1D* ht03,TH1D* ht04,TH1D* ht05,
-					TH1D* hE1,TH1D* hE2,TH1D* hE3,TH1D* hE4,TH1D* hE5, TH1D* hEsum,
+					TH1D* hE1,TH1D* hE2,TH1D* hE3,TH1D* hE4,TH1D* hE5, TH1D* hEcell, TH1D* hEsum,
 					TH1D* hpe1,TH1D* hpe2,TH1D* hpe3,TH1D* hpe4,TH1D* hpe5,
 					TH1D* ht01rel,TH1D* ht02rel,TH1D* ht03rel,TH1D* ht04rel,TH1D* ht05rel,
 					TH1D* ht01singlecell)
@@ -94,7 +95,7 @@ double RelativeTime(std::vector<cell>* vec_cell,
 	double pe [5] = {0,0,0,0,0};
 	double dz [5] = {0,0.044,0.088,0.132,0.18095};
 	
-	LayerTime(vec_cell,tlay,en,pe,tcell);
+	LayerTime(hEcell,vec_cell,tlay,en,pe,tcell);
 	//std::cout<<"tcell="<<tcell<<std::endl;
 	ht01->Fill(tlay[0]);
 	ht02->Fill(tlay[1]);
@@ -170,6 +171,8 @@ void Resolution(const char* finname, const char* foutname)
 	TH1D *hE4= new TH1D("hE4","Energy fourth layer",200,0,1000);
 	TH1D *hE5= new TH1D("hE5","Energy fifth layer",200,0,1000);
 	
+	TH1D *hEcell= new TH1D("hEcell","Energy per cell",200,0,1000);
+	
 	TH1D *hpe1= new TH1D("hpe1","Photo-electrons collected in the first layer",300,0,300);
 	TH1D *hpe2= new TH1D("hpe2","Photo-electrons collected in the second layer",300,0,300);
 	TH1D *hpe3= new TH1D("hpe3","Photo-electrons collected in the third layer",300,0,300);
@@ -202,7 +205,7 @@ void Resolution(const char* finname, const char* foutname)
 		std::cout << "\b\b\b\b\b" << std::setw(3) << int(double(i)/nev*100) << "%]" << std::flush ;
       
 	//std::cout << "*- " << hpe1 << std::endl;
-		tmu=RelativeTime(vec_cell,ht01,ht02,ht03,ht04,ht05,hE1,hE2,hE3,hE4,hE5,hEsum,hpe1,hpe2,hpe3,hpe4,hpe5,ht01rel,ht02rel,ht03rel,ht04rel,ht05rel,ht01singlecell);
+		tmu=RelativeTime(vec_cell,ht01,ht02,ht03,ht04,ht05,hE1,hE2,hE3,hE4,hE5,hEcell,hEsum,hpe1,hpe2,hpe3,hpe4,hpe5,ht01rel,ht02rel,ht03rel,ht04rel,ht05rel,ht01singlecell);
       
 	    //std::cout<<"tmu="<<tmu<<std::endl;
         
