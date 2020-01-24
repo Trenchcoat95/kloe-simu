@@ -83,7 +83,17 @@ void ana(const char* fIn)
 	TTree *tcut = t->CloneTree(0);
 	
 	TH2D hedeplay("hedeplay","",5,0,5,50,0,10000);
-	TH2D hedepradius("hedepradius","",50,1800,2500,50,0,10000);
+	TH2D hedepradius("hedepradius","",50,2000,2235,100,0,1000);
+	
+	TH1D hdistYZ("hdistYZ","",1000,0,400);
+	TH2D hrelposYZ("hrelposYZ","",10000,-400,400,10000,-400,400);
+	TH2D habsposYZ("habsposYZ","",10000,20000,30000,10000,-5000,1000);
+	TH2D hcellposYZ("hcellposYZ","",10000,20000,30000,10000,-5000,1000);
+	
+	TH1D hdistXZ("hdistXZ","",1000,0,400);
+	TH2D hrelposXZ("hrelposXZ","",10000,-400,400,10000,-400,400);
+	TH2D habsposXZ("habsposXZ","",10000,20000,30000,10000,-5000,1000);
+	TH2D hcellposXZ("hcellposXZ","",10000,20000,30000,10000,-5000,1000);
 	
 	int nlay = -1;
 	double edepmax = 0.;
@@ -102,7 +112,7 @@ void ana(const char* fIn)
 	  double radius = sqrt(dy*dy+dz*dz);
 	  double dr = radius - 2000.; 
 	  
-	  std::cout << evt_vtx[1] << " " << evt_vtx[2] << " " << centerKLOE[1] << " " << centerKLOE[2] << std::endl;
+	  //std::cout << evt_vtx[1] << " " << evt_vtx[2] << " " << centerKLOE[1] << " " << centerKLOE[2] << std::endl;
 	  
 	  nlay = -1;
 	  
@@ -137,6 +147,7 @@ void ana(const char* fIn)
 	  {
 		  int layer = vec_cell->at(j).lay;
 		  int mod = vec_cell->at(j).mod;
+		  int cell = vec_cell->at(j).cel;
 		  
 		  if(layer == 4 && mod >= 2 && mod <=10 && vec_cell->at(j).adc1 + vec_cell->at(j).adc2 > edepmax)
 		  {
@@ -147,13 +158,56 @@ void ana(const char* fIn)
 		  //std::cout<<"mod id: "<<mod<<std::endl;
 		  //std::cout<<"cell layer: "<<layer<<std::endl;
 		  
+		  double edep = vec_cell->at(j).adc1 + vec_cell->at(j).adc2;
+		  
 		  if (mod >= 2 && mod <=10)
 		  {
-			if (layer == 4)
+			if (layer == 4 && edep >= 35)
 			{
 			  firstlayer = true;
 			  //break;
 			}
+		  }
+		  
+		  
+		  
+		  if(true)
+		  {
+			  for(int k = 0; k < vec_cell->at(j).hindex1.size(); k++)
+			  {
+				  double hx = ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(j).hindex1.at(k)).GetStart().X();
+				  double hy = ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(j).hindex1.at(k)).GetStart().Y();
+				  double hz = ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(j).hindex1.at(k)).GetStart().Z();
+				  double distX = vec_cell->at(j).x - hx;
+				  double distY = vec_cell->at(j).y - hy;
+				  double distZ = vec_cell->at(j).z - hz;
+				  
+				  /*std::cout << "hindex1: " << mod << " " << layer << " " << cell << " " << 
+				  vec_cell->at(j).x << " " << 
+				  vec_cell->at(j).y << " " << 
+				  vec_cell->at(j).z << " " << 
+				  k << " " << vec_cell->at(j).hindex1.at(k) << " " << 
+				  ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(j).hindex1.at(k)).GetStart().X() << " " <<
+				  ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(j).hindex1.at(k)).GetStart().Y() << " " <<
+				  ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(j).hindex1.at(k)).GetStart().Z() << std::endl;*/
+				  
+				  double dist2DYZ = sqrt(distY*distY + distZ*distZ);
+				  double dist2DXZ = sqrt(distX*distX + distZ*distZ);
+				  if(mod < 24)
+				  {
+					hdistYZ.Fill(dist2DYZ);
+					hrelposYZ.Fill(distZ,distY);
+					habsposYZ.Fill(hz,hy);
+					hcellposYZ.Fill(vec_cell->at(j).z,vec_cell->at(j).y);
+				  }
+				  else if (mod == 30 || mod == 40)
+				  {
+					hdistXZ.Fill(dist2DXZ);
+					hrelposXZ.Fill(distZ,distX);
+					habsposXZ.Fill(hx,hy);
+					hcellposXZ.Fill(vec_cell->at(j).z,vec_cell->at(j).x);
+				  }
+			  }
 		  }
 	  }
   
@@ -209,6 +263,14 @@ void ana(const char* fIn)
 	TFile fout("ana.root","RECREATE");
 	hedeplay.Write();
 	hedepradius.Write();
+	hdistYZ.Write();
+	hrelposYZ.Write();
+	habsposYZ.Write();
+	hcellposYZ.Write();
+	hdistXZ.Write();
+	hrelposXZ.Write();
+	habsposXZ.Write();
+	hcellposXZ.Write();
 	fout.Close();
 	
     

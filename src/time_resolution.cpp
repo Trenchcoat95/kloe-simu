@@ -240,8 +240,19 @@ void Resolution(const char* finname, const char* foutname)
 	c1->Update();
 	gSystem->ProcessEvents();
 	
+	TCanvas *c2 = new TCanvas("c2","hEcell",200,10,900,600);
+	hEcell->GetXaxis()->SetTitle("adc1+adc2");
+    hEcell->GetYaxis()->SetTitle("n^{#circ} of cells");
+	hEcell->SetFillColor(kBlue-10);
+	hEcell->Fit("landau");
+	hEcell->Draw();
+	c2->Modified();
+	c2->Update();
+	gSystem->ProcessEvents();
+	
 	
 	c1->SaveAs("/mnt/c/Linux/Dune/kloe-simu/files/htmu.png");
+	c2->SaveAs("/mnt/c/Linux/Dune/kloe-simu/files/hEcell.png");
 	
     fout->Close();
     f->Close();

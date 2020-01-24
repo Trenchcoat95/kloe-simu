@@ -156,8 +156,6 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
   TString str2 = g->GetPath();
   TObjArray* obj = str2.Tokenize("/");
   
-  
-  
   int size = obj->GetEntries();
   if(size < 6) {return false;};
   
@@ -189,10 +187,8 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
     // planeID==0 -> smallest slab
     // planeID==208 -> biggest slab
     planeID = slabID/40;
-    
+	
     if (planeID > 4) planeID = 4;
-    
-	planeID = 4 - planeID; 
 	
     double Pmaster[3];
     double Plocal[3];
@@ -215,19 +211,22 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
     double dy1 = trd->GetDy1(); 
     double dy2 = trd->GetDy2(); 
       
+	// d1 distanza da estremo left (x<0)
+	// d2 distanza da estremo right (x>0)
     d1 = dy1 + Plocal[1];
     d2 = dy1 - Plocal[1];
     
     // http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Detector/Geometry/geomSolids.html
     // if z = -dz -> dx = 2*dx1
     // if z =  dz -> dx = 2*dx2
-    double dx = - (dx1 - dx2) / dz * Plocal[2];
-    dx =+ dx1 + dx2;
+	// semilarghezza della slab di scintillatore alla quota Plocal[2]
+    double dx = 0.5 * (dx2 - dx1) / dz * Plocal[2] + dx1;
     
-    // Cell width at z
-    double cellw = dx / 12.;
+    // Cell width at z = Plocal[2]
+    double cellw = 2. * dx / 12.;
     
-    cellID = (Plocal[0] + dx*0.5) / cellw;
+	// cellID = distanza dall'estremo diviso larghezza cella
+    cellID = (Plocal[0] + dx) / cellw;
     
     if(ns_Digit::debug)
     {
@@ -235,7 +234,8 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
       std::cout << "\t[x,y,z]                " << x << " " << y << " " << z << std::endl;
       std::cout << "\t[modID,planeID,cellID] " << modID << " " << planeID << " " << cellID << std::endl;
       std::cout << "\t[d1,d2,t,de]           " << d1 << " " << d2 << " " << t << " " << de << std::endl;
-    }
+    }  
+	//std::cout << "hit: " << modID << " " << planeID << " " << cellID << " " << x << " " << y << " " << z << std::endl;
     
     return true;
   }
@@ -247,21 +247,23 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
     TObjArray* obja2 = str2.Tokenize("_");
 	//std::cout << "check1"<< std::endl;
     int slabID;
+	
     modID  = ((TObjString*) obja2->At(4))->GetString().Atoi();
-	if (modID==0) {modID=40;}
-	else if (modID==1) {modID=30;}
     slabID = ((TObjString*) obja->At(1))->GetString().Atoi();
     
+	// mod == 40 -> left
+	// mod == 30 -> right
+	if (modID==0) {modID=40;}
+	else if (modID==1) {modID=30;}
+	
     delete obja;
 	delete obja2;
     
-    // planeID==0 -> smallest slab
-    // planeID==208 -> biggest slab
+    // planeID==0 -> internal
+    // planeID==208 -> external
     planeID = slabID/40;
-    
+	
     if (planeID > 4) planeID = 4;
-    
-	planeID = 4 - planeID; 
     
     double Pmaster[3];
     double Plocal[3];
@@ -282,6 +284,8 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
     double rmax = tub->GetRmax();
     double dz  = tub->GetDz();
     
+	// d1 distanza da estremo up (y>0)
+	// d2 distanza da estremo down (y<0)
     d1 = rmax * TMath::Sin(TMath::ACos(Plocal[0]/rmax)) - Plocal[1];
     d2 = rmax * TMath::Sin(TMath::ACos(Plocal[0]/rmax)) + Plocal[1];
     
@@ -293,6 +297,7 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& modID, int& plane
       std::cout << "\t[x,y,z]                " << x << " " << y << " " << z << std::endl;
       std::cout << "\t[modID,planeID,cellID] " << modID << " " << planeID << " " << cellID << std::endl;
     }
+	//std::cout << "hit: " << modID << " " << planeID << " " << cellID << " " << x << " " << y << " " << z << std::endl;
     
     return true;
   }
@@ -337,8 +342,8 @@ void SimulatePE(TG4Event* ev, TGeoManager* g, std::map<int, std::vector<double> 
               std::cout << "\t" << pe1 << " " << pe2 << std::endl;
             }
             
-            //cell 1 -> x < 0 -> ID > 0
-            //cell 2 -> x > 0 -> ID < 0
+            //cellend 1 -> x < 0 -> ID > 0 -> left
+            //cellend 2 -> x > 0 -> ID < 0 -> right
             
             for(int i = 0; i < pe1; i++)
             {
@@ -380,7 +385,7 @@ void TimeAndSignal(std::map<int, std::vector<double> >& time_pe, std::map<int, d
   }
 }
 
-void CollectSignal(TGeoManager* geo, 
+void CollectSignal(TG4Event* ev, TGeoManager* geo, 
     std::map<int, std::vector<double> >& time_pe, 
     std::map<int, double>& adc, 
     std::map<int, double>& tdc, 
@@ -435,40 +440,37 @@ void CollectSignal(TGeoManager* geo,
         c.y = dummyMas[1];
         c.z = dummyMas[2];
       }
-      else if(c.mod == 30) // right x < 0
-      {        
-        dummyLoc[0] = ns_Digit::ec_r/45. * (0.5 + c.cel) - ns_Digit::ec_r;
-        dummyLoc[1] = 0.;
-        dummyLoc[2] = -ns_Digit::czlay[c.lay];
-        
-        geo->cd(ns_Digit::path_endcapR_template);
-        
-        geo->LocalToMaster(dummyLoc, dummyMas);
-        
-        c.x = dummyMas[0];
-        c.y = dummyMas[1];
-        c.z = dummyMas[2];
-      }
-      else if(c.mod == 40) // left x > 0
+      else if(c.mod == 30 || c.mod == 40) 
+		  // right x > 0 : c.mod = 30 
+		  // left  x < 0 : c.mod = 40
       {        
         dummyLoc[0] = ns_Digit::ec_r/45. * (0.5 + c.cel) - ns_Digit::ec_r;
         dummyLoc[1] = 0.;
         dummyLoc[2] = ns_Digit::czlay[c.lay];
         
-        geo->cd(ns_Digit::path_endcapL_template);
+		if(c.mod == 30)
+		{
+			geo->cd(ns_Digit::path_endcapR_template);
+		}
+		else if(c.mod == 40)
+		{
+			geo->cd(ns_Digit::path_endcapL_template);
+		}
         
         geo->LocalToMaster(dummyLoc, dummyMas);
         
         c.x = dummyMas[0];
         c.y = dummyMas[1];
         c.z = dummyMas[2];
-		
-		//std::cout<< ns_Digit::ec_r << " " << ns_Digit::czlay[c.lay] << " " << c.mod << " " << c.cel << " " << c.lay << " " << c.x << " " << c.y << " " << c.z << std::endl;
-		
-		
       }
       
       vec_cell.push_back(c);
+	  //std::cout << "cell: " << c.mod << " " << c.lay << " " << c.cel << " " << c.x << " " << c.y << " " << c.z << std::endl;
+	  //for(int ll = 0; ll < c.hindex1.size(); ll++)
+	  //{
+		//  std::cout << "hindex1: " << c.mod << " " << c.lay << " " << c.cel << " " << c.x << " " << c.y << " " << c.z << " " << ll << " " << c.hindex1.at(ll) << " " << ev->SegmentDetectors["EMCalSci"].at(c.hindex1.at(ll)).Start.X() << " " 
+		// << ev->SegmentDetectors["EMCalSci"].at(c.hindex1.at(ll)).Start.Y() << " " << ev->SegmentDetectors["EMCalSci"].at(c.hindex1.at(ll)).Start.Z() << std::endl;
+	  //}
     }
 }
 
@@ -500,9 +502,9 @@ int init(TGeoManager* geo)
     
     for(int i = 0; i < ns_Digit::nLay; i++)
     {
-      ns_Digit::czlay[i] = (ns_Digit::dzlay[i] + ns_Digit::dzlay[i+1]) - ns_Digit::dzlay[0];
+      ns_Digit::czlay[i] = -dz + ns_Digit::dzlay[i];
       
-      double dx = xmin + (xmax - xmin)/dz * (0.5 * (ns_Digit::dzlay[i] + ns_Digit::dzlay[i+1]));
+      double dx = xmin + 0.5 * (xmax - xmin)/dz * ns_Digit::dzlay[i];
       
       for(int j = 0; j < ns_Digit::nCel; j++)
       {
@@ -560,7 +562,7 @@ void DigitizeCal(TG4Event* ev, TGeoManager* geo, std::vector<cell>& vec_cell)
     {
       std::cout << "CollectSignal" << std::endl;
     }
-    CollectSignal(geo, time_pe, adc, tdc, L, id_hit, vec_cell);
+    CollectSignal(ev, geo, time_pe, adc, tdc, L, id_hit, vec_cell);
 	if(ns_Digit::debug)
     {
       std::cout << "CollectSignal done" << std::endl;

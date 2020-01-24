@@ -230,11 +230,14 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& planeID, int& cel
   }
 }
 
-void SimulatePE(TG4Event* ev, TGeoManager* g, std::map<int, std::vector<double> >& time_pe, std::map<int, std::vector<int> >& id_hit, std::map<int, double>& L)
+double SimulatePE(TG4Event* ev, TGeoManager* g, std::map<int, std::vector<double> >& time_pe, std::map<int, std::vector<int> >& id_hit, std::map<int, double>& L)
 {    
     int planeID, cellID, id;
     double d1, d2, t0, de;
-
+    double NP = 0;
+	double E = 0;
+	double NPE = 0;
+	int i = 0;
     TRandom3 r(0);
 	
 	//std::cout << "map size: " << ev->SegmentDetectors.size() << std::endl;
@@ -257,11 +260,16 @@ void SimulatePE(TG4Event* ev, TGeoManager* g, std::map<int, std::vector<double> 
             
             int pe1 = r.Poisson(ave_pe1);
             int pe2 = r.Poisson(ave_pe2);
-            
+			
+			NP = pe1 + pe2;
+			E = de;
+            NPE += NP/E;
+			i++;
             id = cellID + 100 * planeID; //+ 1000 * modID;
             
             if(ns_Digit::debug)
             {
+			  
               std::cout << "cell ID: " << id << std::endl;
               std::cout << "\t" << de << " " << en1 << " " << en2 << std::endl;
               std::cout << "\t" << ave_pe1 << " " << ave_pe2 << std::endl;
@@ -288,6 +296,9 @@ void SimulatePE(TG4Event* ev, TGeoManager* g, std::map<int, std::vector<double> 
         }
       }
     }
+	//std::cout<< "Mea N(pe) per MeV: " << NPE/i << std::endl;
+	return NPE/i;
+	
 }
 
 void TimeAndSignal(std::map<int, std::vector<double> >& time_pe, std::map<int, double>& adc, std::map<int, double>& tdc)
@@ -389,14 +400,15 @@ void init(TGeoManager* geo)
     //ns_Digit::ec_dz = ec->GetDz();
 }
 
-void DigitizeCal(TG4Event* ev, TGeoManager* geo, std::vector<cell>& vec_cell)
+double DigitizeCal(TG4Event* ev, TGeoManager* geo, std::vector<cell>& vec_cell)
 {     
     std::map<int, std::vector<double> > time_pe;
     std::map<int, std::vector<int> > id_hit;
     std::map<int, double> adc;
+	//std::map<int, double> Edep;
     std::map<int, double> tdc;
     std::map<int, double> L;
-    
+    double NPEsum;
     vec_cell.clear();
     
     
@@ -404,7 +416,8 @@ void DigitizeCal(TG4Event* ev, TGeoManager* geo, std::vector<cell>& vec_cell)
     {
       std::cout << "SimulatePE" << std::endl;
     }    
-    SimulatePE(ev, geo, time_pe, id_hit, L);  
+    SimulatePE(ev, geo, time_pe, id_hit, L); 
+    NPEsum = SimulatePE(ev, geo, time_pe, id_hit, L);
     if(ns_Digit::debug)
     {
       std::cout << "TimeAndSignal" << std::endl;
@@ -415,6 +428,8 @@ void DigitizeCal(TG4Event* ev, TGeoManager* geo, std::vector<cell>& vec_cell)
       std::cout << "CollectSignal" << std::endl;
     }
     CollectSignal(geo, time_pe, adc, tdc, L, id_hit, vec_cell); 
+	
+	return(NPEsum);
 }
 
 void Digitize(const char* finname, const char* foutname)
@@ -430,7 +445,7 @@ void Digitize(const char* finname, const char* foutname)
     //TTree* InputFiles = (TTree*) f.Get("DetSimPassThru/InputFiles");
     
     init(geo);
-    
+    double NPEmean = 0;
     TG4Event* ev = new TG4Event;
     t->SetBranchAddress("Event",&ev);
   
@@ -455,11 +470,12 @@ void Digitize(const char* finname, const char* foutname)
       
       DigitizeCal(ev, geo, vec_cell);
       //DigitizeStt(ev, geo, digit_vec);
-         
+      NPEmean +=  DigitizeCal(ev, geo, vec_cell); 
       tout.Fill();
     }
     std::cout << "\b\b\b\b\b" << std::setw(3) << 100 << "%]" << std::flush;
     std::cout << std::endl;
+	//std::cout << NPEmean/nev << std::endl;
     
     fout.cd();
     tout.Write();
