@@ -279,7 +279,8 @@ void TrackFind(TG4Event* ev, TGeoManager* g, std::vector<digit>* vec_digi, std::
   //for(unsigned int j = 0; j < ev->Primaries[0].Particles.size(); j++)
   for(unsigned int j = 0; j < ev->Trajectories.size(); j++)
   {
-	
+	if(ev->Trajectories.at(j).ParentId == -1)
+	{
     track tr;
     
     reset(tr);
@@ -348,6 +349,7 @@ void TrackFind(TG4Event* ev, TGeoManager* g, std::vector<digit>* vec_digi, std::
     std::sort(tr.digits.begin(), tr.digits.end(), isDigBefore);
     
     vec_tr.push_back(tr);
+	}
   }
 }
 
@@ -749,6 +751,7 @@ bool value_comparer(std::map<int, int>::value_type &i1, std::map<int, int>::valu
 
 void PidBasedClustering(TG4Event* ev, std::vector<cell>* vec_cell, std::vector<cluster>& vec_cl)
 {
+  
   std::vector<int> pid(vec_cell->size());
   std::map<int, int> hit_pid;
   
@@ -759,12 +762,16 @@ void PidBasedClustering(TG4Event* ev, std::vector<cell>* vec_cell, std::vector<c
     
     for(unsigned int j = 0; j < vec_cell->at(i).hindex1.size(); j++)
     {
-      hit_pid[ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(i).hindex1.at(j)).PrimaryId]++;
+	  int Trackid = ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(i).hindex1.at(j)).GetPrimaryId();
+      int ParId = ev->Trajectories.at(Trackid).GetParentId();
+      if(ParId == -1){hit_pid[ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(i).hindex1.at(j)).PrimaryId]++;}
     }
     
     for(unsigned int j = 0; j < vec_cell->at(i).hindex2.size(); j++)
     {
-      hit_pid[ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(i).hindex2.at(j)).PrimaryId]++;
+	  int Trackid = ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(i).hindex2.at(j)).GetPrimaryId();
+      int ParId = ev->Trajectories.at(Trackid).GetParentId();
+      if(ParId == -1){hit_pid[ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(i).hindex2.at(j)).PrimaryId]++;}
     }
     
     pid[i] = std::max_element(hit_pid.begin(), hit_pid.end(), value_comparer)->first;

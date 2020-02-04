@@ -141,15 +141,65 @@ double RelativeTime(std::vector<cell>* vec_cell,
 	
 }
 
+void DistanceCheck (TG4Event* ev, std::vector<cell>* vec_cell, TH1D* hdistYZ, TH2D* hrelposYZ, TH2D* habsposYZ, TH2D* hcellposYZ, TH1D* hdistXZ, TH2D* hrelposXZ, TH2D* habsposXZ, TH2D* hcellposXZ)
+
+{
+	for (int j = 0; j < vec_cell->size(); j++)
+	  {
+		int layer = vec_cell->at(j).lay;
+		int cell = vec_cell->at(j).cel;
+		
+		for(int k = 0; k < vec_cell->at(j).hindex1.size(); k++)
+			  {
+				  double hx = ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(j).hindex1.at(k)).GetStart().X();
+				  double hy = ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(j).hindex1.at(k)).GetStart().Y();
+				  double hz = ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(j).hindex1.at(k)).GetStart().Z();
+				  double distX = vec_cell->at(j).x - hx;
+				  double distY = vec_cell->at(j).y - hy;
+				  double distZ = vec_cell->at(j).z - hz;
+				  
+				  /*
+				  std::cout <<  layer << " " << cell << " " << vec_cell->at(j).x << " " << 
+				  vec_cell->at(j).y << " " << 
+				  vec_cell->at(j).z << " " << 
+				  k << " " << vec_cell->at(j).hindex1.at(k) << " " << 
+				  ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(j).hindex1.at(k)).GetStart().X() << " " <<
+				  ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(j).hindex1.at(k)).GetStart().Y() << " " <<
+				  ev->SegmentDetectors["EMCalSci"].at(vec_cell->at(j).hindex1.at(k)).GetStart().Z() << std::endl;
+				  */
+				  
+				  double dist2DYZ = sqrt(distY*distY + distZ*distZ);
+				  double dist2DXZ = sqrt(distX*distX + distZ*distZ);
+				  
+					hdistYZ->Fill(dist2DYZ);
+					hrelposYZ->Fill(distZ,distY);
+					habsposYZ->Fill(hz,hy);
+					hcellposYZ->Fill(vec_cell->at(j).z,vec_cell->at(j).y);
+					hdistXZ->Fill(dist2DXZ);
+					hrelposXZ->Fill(distZ,distX);
+					habsposXZ->Fill(hx,hy);
+					hcellposXZ->Fill(vec_cell->at(j).z,vec_cell->at(j).x);
+				  
+			  }
+	  }
+}
+
 void Resolution(const char* finname, const char* foutname)
 {
 	  
     auto f = TFile::Open(finname);
-    auto t = (TTree*) f->Get("tDigit");
-      
+    auto tDigit = (TTree*) f->Get("tDigit");
+	auto tTrueMC = (TTree*) f->Get("EDepSimEvents");
+	
+	tDigit->AddFriend(tTrueMC);
+	
+	TTree* t = tDigit;
+     
+	TG4Event* ev = new TG4Event;
 	std::vector<cell>* vec_cell = 0;
 	
 	t->SetBranchAddress("cell", &vec_cell);
+	t->SetBranchAddress("Event",&ev);
 	
 	//std::vector<celltime> vec_celltime;
 	
@@ -187,6 +237,16 @@ void Resolution(const char* finname, const char* foutname)
 	TH1D *ht05rel= new TH1D("ht05rel","T0 fifth layer relative",200,0,4);
 	
 	TH1D *hEsum= new TH1D("hEsum","Total Energy Deposit",200,0,2000);
+	
+	TH1D *hdistYZ= new TH1D("hdistYZ","",1000,0,400);
+	TH2D *hrelposYZ= new TH2D("hrelposYZ","",10000,-400,400,10000,-400,400);
+	TH2D *habsposYZ= new TH2D("habsposYZ","",10000,20000,30000,10000,-5000,1000);
+	TH2D *hcellposYZ= new TH2D("hcellposYZ","",10000,20000,30000,10000,-5000,1000);
+	
+	TH1D *hdistXZ= new TH1D("hdistXZ","",1000,0,400);
+	TH2D *hrelposXZ= new TH2D("hrelposXZ","",10000,-400,400,10000,-400,400);
+	TH2D *habsposXZ= new TH2D("habsposXZ","",10000,20000,30000,10000,-5000,1000);
+	TH2D *hcellposXZ= new TH2D("hcellposXZ","",10000,20000,30000,10000,-5000,1000);
     //tout->Branch("time","TH1D",&htmu,32000,0);
     double tmu = 0;
     
@@ -207,6 +267,7 @@ void Resolution(const char* finname, const char* foutname)
 	//std::cout << "*- " << hpe1 << std::endl;
 		tmu=RelativeTime(vec_cell,ht01,ht02,ht03,ht04,ht05,hE1,hE2,hE3,hE4,hE5,hEcell,hEsum,hpe1,hpe2,hpe3,hpe4,hpe5,ht01rel,ht02rel,ht03rel,ht04rel,ht05rel,ht01singlecell);
       
+	    DistanceCheck (ev, vec_cell, hdistYZ,  hrelposYZ,  habsposYZ,  hcellposYZ,  hdistXZ, hrelposXZ, habsposXZ, hcellposXZ);
 	    //std::cout<<"tmu="<<tmu<<std::endl;
         
 		htmu->Fill(tmu);
@@ -251,12 +312,12 @@ void Resolution(const char* finname, const char* foutname)
 	gSystem->ProcessEvents();
 	
 	
-	c1->SaveAs("/mnt/c/Linux/Dune/kloe-simu/files/htmu.png");
-	c2->SaveAs("/mnt/c/Linux/Dune/kloe-simu/files/hEcell.png");
+	c1->SaveAs("/mnt/c/Linux/Dune/kloe-simu/plots/htmu.png");
+	c2->SaveAs("/mnt/c/Linux/Dune/kloe-simu/plots/hEcell.png");
 	
     fout->Close();
     f->Close();
-	
+	std::cout<< "Files closed" << std::endl;
 	theApp.Run(true); 
 
 }

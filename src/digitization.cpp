@@ -320,7 +320,8 @@ void SimulatePE(TG4Event* ev, TGeoManager* g, std::map<int, std::vector<double> 
       if(it->first == "EMCalSci")
       {
         for(unsigned int j = 0; j < it->second.size(); j++)
-        {          
+        {   
+	      //it->second[j]
           if(ProcessHit(g, it->second[j], modID, planeID, cellID, d1, d2, t0, de) == true)
           {
             double en1 = de * Attenuation(d1, planeID);

@@ -205,13 +205,13 @@ bool ProcessHit(TGeoManager* g, const TG4HitSegment& hit, int& planeID, int& cel
     // http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Detector/Geometry/geomSolids.html
     // if z = -dz -> dx = 2*dx1
     // if z =  dz -> dx = 2*dx2
-    double dx = - (dx1 - dx2) / dz * Plocal[2];
-    dx =+ dx1 + dx2;
+    double dx = 0.5 * (dx2 - dx1) / dz * Plocal[2]+ dx1;
+    
     
     // Cell width at z
-    double cellw = dx / 12.;
+    double cellw = 2 * dx / 12.;
     
-    cellID = (Plocal[0] + dx*0.5) / cellw;
+    cellID = (Plocal[0] + dx) / cellw;
     
     if(ns_Digit::debug)
     {
@@ -378,15 +378,15 @@ void init(TGeoManager* geo)
 {
     TGeoTrd2* mod = (TGeoTrd2*) geo->FindVolumeFast("ECAL_lv_PV")->GetShape();
     
-    double xmax = mod->GetDx1();
-    double xmin = mod->GetDx2();
+    double xmax = mod->GetDx2();
+    double xmin = mod->GetDx1();
     double dz = mod->GetDz();
     
     for(int i = 0; i < ns_Digit::nLay; i++)
     {
-      ns_Digit::czlay[i] = (ns_Digit::dzlay[i] + ns_Digit::dzlay[i+1]) - ns_Digit::dzlay[0];
+      ns_Digit::czlay[i] = -dz + ns_Digit::dzlay[i];
       
-      double dx = xmax - (xmax - xmin)/dz * (0.5 * (ns_Digit::dzlay[i] + ns_Digit::dzlay[i+1]));
+      double dx = xmin + 0.5 * (xmax - xmin)/dz * ns_Digit::dzlay[i];
       
       for(int j = 0; j < ns_Digit::nCel; j++)
       {

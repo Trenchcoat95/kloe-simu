@@ -72,6 +72,8 @@ void FillParticleInfo(TG4Event* ev, std::map<int, particle>& map_part)
 {
   for(unsigned int j = 0; j < ev->Trajectories.size(); j++)
   {
+	if(ev->Trajectories.at(j).ParentId == -1)
+	{
     particle p;
     reset(p);
     
@@ -99,6 +101,7 @@ void FillParticleInfo(TG4Event* ev, std::map<int, particle>& map_part)
     p.ttrue = ev->Trajectories.at(j).Points.at(0).Position.T();
     
     map_part[p.tid] = p;
+	}
   }
 }
 

@@ -1,1 +1,0 @@
-export LD_LIBRARY_PATH=/mnt/c/Linux/GEANT/geant4_10_05_p01-install/lib:/mnt/c/Linux/root6/root/lib:/usr/lib/x86_64-linux-gnu:/mnt/c/Linux/Dune/kloe-simu/lib:/mnt/c/Linux/Dune/edep-sim/edep-gcc-7-x86_64-linux-gnu/lib:/mnt/c/Linux/Dune/edep-sim/edep-gcc-7-x86_64-linux-gnu/lib:/mnt/c/Linux/Dune/kloe-simu/lib

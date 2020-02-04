@@ -104,6 +104,7 @@ void init(const char* ifile)
   
   //double dzlay[nLay+1] = {115, 115-27, 115-27-22, 115-27-22-22, 115-27-22-22-22, 115-27-22-22-22-22};
   double dzlay[nLay+1] = {115-27-22-22-22-22, 115-27-22-22-22, 115-27-22-22, 115-27-22, 115-27, 115};
+  
   double dx1[nLay];
   double dx2[nLay];
   
@@ -190,7 +191,7 @@ void init(const char* ifile)
       {
         
         int index = i * (nLay * nCel) + j * (nCel) + k;
-        int id = k + 100 * (4-j) + 1000 * i;
+        int id = k + 100 * (j) + 1000 * i;
         
         int local_index = j*nCel+k;
         
@@ -263,7 +264,7 @@ void init(const char* ifile)
   {
     for(int k = 0; k < nCel_ec; k++)
     {
-      int id = k + 100 * (4-j) + 1000 * 30;
+      int id = k + 100 * (j) + 1000 * 30;
       
       calocell[id].id = id;
       
@@ -312,7 +313,7 @@ void init(const char* ifile)
   {
     for(int k = 0; k < nCel_ec; k++)
     {
-      int id = k + 100 * (4-j) + 1000 * 40;
+      int id = k + 100 * (j) + 1000 * 40;
       
       calocell[id].id = id;
       

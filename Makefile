@@ -11,7 +11,7 @@ EDEPGLIBS = -L$(EDEPSIM)/lib/ -ledepsim -ledepsim_io
 EDEPINCDIR = $(EDEPSIM)/include/EDepSim
 
 #all: Digitize Reconstruct Analyze
-all: MinDigitize Time Digitize Reconstruct Analyze Ana
+all: MinDigitize Time Digitize Reconstruct Analyze
 
 struct.cxx: include/struct.h include/Linkdef.h
 	cd include && rootcint -f ../src/$@ -c $(CFLAGS) -p $(HEADERS) Linkdef.h && cd ..
@@ -39,7 +39,5 @@ Analyze: libStruct.so
 	g++ src/analysis.cpp -o bin/$@ $(CFLAGS) $(LDFLAGS) -I$(EDEPINCDIR) -Iinclude $(ROOTGLIBS) -lGeom -lEG \
 	$(EDEPGLIBS) -Llib -lStruct 
 	
-Ana: libStruct.so
-	g++ src/ana.cpp -o bin/$@ $(CFLAGS) $(LDFLAGS) -I$(EDEPINCDIR) -Iinclude $(ROOTGLIBS) -lGeom -lEG \
-	$(EDEPGLIBS) -Llib -lStruct 
+
 
