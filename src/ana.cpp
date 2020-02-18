@@ -29,7 +29,7 @@
 #include <map>
 #include <iostream>
 
-void ana(const char* fIn)
+void ana(const char* fgeo, const char* fIn, const char* fOut)    ///////(First file, List of file in directory using wildcard *, output file)
 {
 	int change = 1;
 	
@@ -37,21 +37,34 @@ void ana(const char* fIn)
 	
 	gSystem->Load("/mnt/c/Linux/Dune/kloe-simu/lib/libStruct.so");
 	
+	//TChain *f=new TChain("f");
+	//f->Add(fIn);
+	TFile* fg= new TFile(fgeo);
+    TFile* fo= new TFile(fOut,"RECREATE");
+    fo->cd();	
+	//TTree* tTracker = (TTree*) f->Get("gRooTracker");
 	
-	TFile* f= new TFile(fIn,"UPDATE");	
-	
-    TTree* tTracker = (TTree*) f->Get("gRooTracker");
-	TTree* tTrueMC = (TTree*) f->Get("EDepSimEvents");
-	TTree* tDigit = (TTree*) f->Get("tDigit");
-	TTree* tReco = (TTree*) f->Get("tReco");
-	TTree* tEvent = (TTree*) f->Get("tEvent");
-	TGeoManager* geo = (TGeoManager*) f->Get("EDepSimGeometry");
+	TChain* tTracker = new TChain("gRooTracker");
+	tTracker->Add(fIn);
+	TChain* tTrueMC = new TChain("EDepSimEvents");
+	tTrueMC->Add(fIn);
+	TChain* tDigit = new TChain("tDigit");
+	tDigit->Add(fIn);
+	TChain* tReco = new TChain("tReco");
+	tReco->Add(fIn);
+	TChain* tEvent = new TChain("tEvent");
+	tEvent->Add(fIn);
+	TGeoManager* geo = (TGeoManager*) fg->Get("EDepSimGeometry");
 	
 	TTree* tout = new TTree("tLay","tLay");
 	int outerlayer;
 	int outerlayerMC;
+	int MuonReco;
+	double Ereco;
     tout->Branch("outerlayer",&outerlayer,"outerlayer/I");
-	tout->Branch("outerlayerMC",&outerlayer,"outerlayer/I");
+	tout->Branch("outerlayerMC",&outerlayerMC,"outerlayerMC/I");
+	tout->Branch("MuonReco",&MuonReco,"MuonReco/I");
+	tout->Branch("Ereco",&Ereco,"Ereco/D");
 	
 	
 	tDigit->AddFriend(tTrueMC);
@@ -123,7 +136,7 @@ void ana(const char* fIn)
       
 	  t->GetEntry(i);
 	  
-	  
+	  MuonReco = 0;
 	  outerlayer = 0;
 	  outerlayerMC = 0;
 	  int pemuon = 0;
@@ -223,6 +236,8 @@ void ana(const char* fIn)
 					{
 						muonreco++;
 						hmuonErecoInner->Fill(e->particles.at(k).Ereco);   /////////////////////////////////Fill dell'istogramma dell'energia ricostruita
+						Ereco=e->particles.at(k).Ereco;
+						MuonReco=1;
 					}
 				  else {std::cout<<"Problematic event number:"<<i<<std::endl;}
 			  }
@@ -276,7 +291,7 @@ void ana(const char* fIn)
 	
 	///////////////DRAW/////////////////////////
 	
-	TCanvas *c1 = new TCanvas("c1","c1",200,10,900,600);
+	TCanvas *c1 = new TCanvas("cneutrino_E","cneutrino_E",200,10,900,600);
 
 	t->Draw("StdHepP4[0][3]","","", 1000, 0);
 	TH1D *h = (TH1D*)gPad->GetPrimitive("htemp");
@@ -286,7 +301,7 @@ void ana(const char* fIn)
 	c1->Modified();
 	c1->Update();
 	
-	TCanvas *c2 = new TCanvas("c2","c2",200,10,900,900);
+	TCanvas *c2 = new TCanvas("cyx","cyx",200,10,900,900);
 	
 	t->SetMarkerColor(kBlack);
 	t->Draw("EvtVtx[1]:EvtVtx[0]>>hyx",internalEvent,"*", 1000, 0); //internalEvent
@@ -302,7 +317,7 @@ void ana(const char* fIn)
 	c2->Modified();
 	c2->Update();
 	
-	TCanvas *c3 = new TCanvas("c3","c3",200,10,900,900);
+	TCanvas *c3 = new TCanvas("cyz","cyz",200,10,900,900);
 	
 	t->SetMarkerColor(kBlack);
 	t->Draw("EvtVtx[1]:EvtVtx[2]>>hyz",internalEvent,"*", 1000, 0); //internalEvent
@@ -319,7 +334,7 @@ void ana(const char* fIn)
 	gStyle->SetOptStat(kTRUE);
 	gStyle->SetOptFit(kTRUE);
 	
-	TCanvas *c4 = new TCanvas("c4","c4",200,10,900,600);
+	TCanvas *c4 = new TCanvas("cmuon_pe","cmuon_pe",200,10,900,600);
 	hmuonpeInner->SetTitle("Muon p.e. production");
 	hmuonpeInner->GetXaxis()->SetTitle("number of photoelectrons");
 	hmuonpeInner->GetYaxis()->SetTitle("events");
@@ -330,7 +345,7 @@ void ana(const char* fIn)
 	c4->Update();
 
 	
-	TCanvas *c5 = new TCanvas("c5","c5",200,10,900,600);
+	TCanvas *c5 = new TCanvas("cmuon_reconstructed_E","cmuon_reconstructed_E",200,10,900,600);
 	hmuonErecoInner->SetTitle("Muon reconstructed energy");
 	hmuonErecoInner->GetXaxis()->SetTitle("MeV");
 	hmuonErecoInner->GetYaxis()->SetTitle("events");
@@ -342,7 +357,7 @@ void ana(const char* fIn)
 	
 	
 	
-	TCanvas *c6 = new TCanvas("c6","c6",200,10,900,600);
+	TCanvas *c6 = new TCanvas("cneutrino_E_cut","cneutrino_E_cut",200,10,900,600);
 	gStyle->SetOptStat(0);
 	hEneutrinoInner.SetTitle("");//Neutrino energy distribution of the events surviving the cut
 	hEneutrinoInner.GetXaxis()->SetTitle("GeV/c");
@@ -383,7 +398,7 @@ void ana(const char* fIn)
 	if(TEfficiency::CheckConsistency(hEneutrinoInner,hEneutrinoInnerMC))
 	{
 		pEffCut = new TEfficiency(hEneutrinoInner,hEneutrinoInnerMC);
-		TCanvas *c8 = new TCanvas("c8","c8",200,10,900,600);
+		TCanvas *c8 = new TCanvas("ccut_efficiency","ccut_efficiency",200,10,900,600);
 		pEffCut->SetTitle(";Neutrino Energy [GeV/c];Efficiency"); //Cut efficiency as a function of the neutrino energy
 		//pEffCut->GetXaxis()->SetTitle("Neutrino Energy (GeV/c)");
 		//pEffCut->GetYaxis()->SetTitle("Cut Efficiency");
@@ -396,12 +411,12 @@ void ana(const char* fIn)
 		
 		std::string CutEfficiencyad = "/mnt/c/Linux/Dune/kloe-simu/plots/CutEfficiency";
 		CutEfficiencyad += std::to_string(nev)+".png";
-		c8->SaveAs(CutEfficiencyad.c_str());
-		
+		//c8->SaveAs(CutEfficiencyad.c_str());
+		c8->Write("",TObject::kOverwrite);
 		pEffCut->Write("",TObject::kOverwrite);
 	}
 	
-	TCanvas *c9 = new TCanvas("c9","c9",200,10,900,600);
+	TCanvas *c9 = new TCanvas("cmuon_p","cmuon_p",200,10,900,600);
 	gStyle->SetOptStat(0);
 	hpmuon.SetTitle("");
 	hpmuon.GetXaxis()->SetTitle("E [MeV]");
@@ -432,7 +447,7 @@ void ana(const char* fIn)
 	legend4->SetBorderSize(1);
 	legend4->Draw("");
 	
-	TCanvas *c10a = new TCanvas("c10a","c10a",200,10,900,600);
+	TCanvas *c10a = new TCanvas("cmuon_E","cmuon_E",200,10,900,600);
 	hmuonrecoEInner.SetTitle("Muon Real Energy distribution (Correctly Recunstructed and survived the cut)");
 	hmuonrecoEInner.GetXaxis()->SetTitle("MeV");
 	hmuonrecoEInner.GetYaxis()->SetTitle("events");
@@ -444,14 +459,14 @@ void ana(const char* fIn)
 	
 	
 	
-	hmuonrecoEInner.Chi2Test(hmuonErecoInner,"P");
+	//hmuonrecoEInner.Chi2Test(hmuonErecoInner,"P");
 	
 	
 	TEfficiency* pEffReco = 0;                             ///////////////////////////////Efficienza ricostruzione
 	if(TEfficiency::CheckConsistency(hpmuonreco,hpmuon))
 	{
 		pEffReco = new TEfficiency(hpmuonreco,hpmuon);
-		TCanvas *c11 = new TCanvas("c11","c11",200,10,900,600);
+		TCanvas *c11 = new TCanvas("creconstruction_efficiency","creconstruction_efficiency",200,10,900,600);
 		pEffReco->SetTitle(";E [MeV];#varepsilon_{reco}(E)");//("Reconstruction efficiency as a function of the muon momentum;Muon momentum [MeV];Efficiency");
 		//pEffCut->GetXaxis()->SetTitle("Neutrino Energy (GeV/c)");
 		//pEffCut->GetYaxis()->SetTitle("Cut Efficiency");
@@ -464,8 +479,8 @@ void ana(const char* fIn)
 		
 		std::string RecoEfficiencyad = "/mnt/c/Linux/Dune/kloe-simu/plots/RecoEfficiency";
 		RecoEfficiencyad += std::to_string(nev)+".png";
-		c11->SaveAs(RecoEfficiencyad.c_str());
-		
+		//c11->SaveAs(RecoEfficiencyad.c_str());
+		c11->Write("",TObject::kOverwrite);
 		pEffReco->Write("",TObject::kOverwrite);
 	}
 	
@@ -517,7 +532,7 @@ void ana(const char* fIn)
 	PMuonRecoad += std::to_string(nev)+".png";
 	PMuonRecoInnerad += std::to_string(nev)+".png";
 	
-	
+	/*
 	c1->SaveAs(Eneutrinoad.c_str());
 	c2->SaveAs(xyad.c_str());
 	c3->SaveAs(yzad.c_str());
@@ -528,7 +543,16 @@ void ana(const char* fIn)
 	c9->SaveAs(PMuonad.c_str());
 	//c10->SaveAs(PMuonRecoad.c_str());
 	c10a->SaveAs(PMuonRecoad.c_str());
+	*/
 	
+	c1->Write("",TObject::kOverwrite);
+	c2->Write("",TObject::kOverwrite);
+	c3->Write("",TObject::kOverwrite);
+	c4->Write("",TObject::kOverwrite);
+	c5->Write("",TObject::kOverwrite);
+	c6->Write("",TObject::kOverwrite);
+	c9->Write("",TObject::kOverwrite);
+	c10a->Write("",TObject::kOverwrite);
 	
 	tout->Write("",TObject::kOverwrite);
 	
