@@ -46,7 +46,7 @@ TCut fiducial = TString::Format("maxde_frontoutlayer < %f && abs(xv_reco) < 1500
 TCut CC = "isCC == 1";
 TCut muonOK = "isPmuOK == 1 && !(pxmu_reco == 0 && pymu_reco == 0 && pzmu_reco == 0)";
 TCut QE = "NHitLayer[0] == 1 ||  NHitLayer[0] == 2";
-TCut QualityCut = "chi2_ln < 3 && chi2_cr < 1000";
+TCut QualityCut = "red_chi2_ln < 3 && red_chi2_cr < 1000";
 
 TCanvas c1("c1","c1",1000,1000,1000,1000);
 
@@ -232,7 +232,7 @@ void processChain(TChain& t)
 
 }
 
-void ana()
+void anamine()
 {
   gROOT->SetBatch(1);
 
@@ -241,10 +241,33 @@ void ana()
   tNom.Add(path + "nominal/*");
   tH1Y.Add(path + "shift/*");
 
+  //////////////////////////////////////////////SetALIASES
+  
   tNom.SetAlias("pmu_true","sqrt(pxmu_true*pxmu_true+pymu_true*pymu_true+pzmu_true*pzmu_true)");
   tH1Y.SetAlias("pmu_true","sqrt(pxmu_true*pxmu_true+pymu_true*pymu_true+pzmu_true*pzmu_true)");
+  
   tNom.SetAlias("pmu_reco","sqrt(pxmu_reco*pxmu_reco+pymu_reco*pymu_reco+pzmu_reco*pzmu_reco)");
   tH1Y.SetAlias("pmu_reco","sqrt(pxmu_reco*pxmu_reco+pymu_reco*pymu_reco+pzmu_reco*pzmu_reco)");
+  
+  tNom.SetAlias("ptmu_true","sqrt(pymu_true*pymu_true+pzmu_true*pzmu_true)");
+  tH1Y.SetAlias("ptmu_true","sqrt(pymu_true*pymu_true+pzmu_true*pzmu_true)");
+
+  tNom.SetAlias("ptmu_reco","sqrt(pymu_reco*pymu_reco+pzmu_reco*pzmu_reco)");
+  tH1Y.SetAlias("ptmu_reco","sqrt(pymu_reco*pymu_reco+pzmu_reco*pzmu_reco)");
+  
+  tNom.SetAlias("reldptmu","1-ptmu_true/ptmu_reco");
+  tH1Y.SetAlias("reldptmu","1-ptmu_true/ptmu_reco");
+
+  tNom.SetAlias("reldplmu","1-abs(pxmu_true)/abs(pxmu_reco)");
+  tH1Y.SetAlias("reldplmu","1-abs(pxmu_true)/abs(pxmu_reco)");
+  
+
+  tNom.SetAlias("red_chi2_cr","2*chi2_cr/nHit");
+  tH1Y.SetAlias("red_chi2_cr","2*chi2_cr/nHit");
+
+  tNom.SetAlias("red_chi2_ln","2*chi2_ln/nHit");
+  tH1Y.SetAlias("red_chi2_ln","2*chi2_ln/nHit");
+  ////////////////////////////////////////////////////////////////////
 
   processChain(tNom);
 
@@ -483,7 +506,7 @@ void ana()
   
   /////////////////////////////////ptrueVSpreco Quality Cut
   
-  TH2D h_pQ("h_pQ","",200,0,40,200,0,20);
+  TH2D h_pQ("h_pQ","",200,0,20,200,0,20);
   h_pQ.GetXaxis()->SetTitle("p_{#mu}^{true} [GeV/c]");
   h_pQ.GetYaxis()->SetTitle("p_{#mu}^{reco} [GeV/c]");
   tNom.Draw("pmu_reco/1E3:pmu_true/1E3>>h_pQ",fiducial + CC + muonOK + lowE + QualityCut,"");

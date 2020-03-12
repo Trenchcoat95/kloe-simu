@@ -8,7 +8,7 @@
 /gps/energy 1000 MeV
 
 # Set the position of the particle gun.
-/gps/position 0.0 2.0 0.0 m
+/gps/position 0.0 -0.38473 23.9122 m
 /gps/direction 0 1 0
 
 # This generates the direction of the muon.  This aims

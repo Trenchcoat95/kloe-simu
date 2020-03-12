@@ -46,9 +46,48 @@ TCut fiducial = TString::Format("maxde_frontoutlayer < %f && abs(xv_reco) < 1500
 TCut CC = "isCC == 1";
 TCut muonOK = "isPmuOK == 1 && !(pxmu_reco == 0 && pymu_reco == 0 && pzmu_reco == 0)";
 TCut QE = "NHitLayer[0] == 1 ||  NHitLayer[0] == 2";
-TCut QualityCut = "chi2_ln < 3 && chi2_cr < 1000";
+TCut QualityCut = "chi2_cr < 1E5";
+TCut lowE = "Enu_true/1E3<20";
 
 TCanvas c1("c1","c1",1000,1000,1000,1000);
+
+void EvalChi2(TH1D& h1, TH1D& h2, double& chi2, int& ndof)
+{
+  double n1, n2;
+  double vchi2 = 0.;
+  
+  chi2 = 0.;
+  
+  ndof =  h1.GetNbinsX();
+
+  for(int i = 0; i < ndof; i++)
+  {
+    n1 = h1.GetBinContent(i+1);
+    n2 = h2.GetBinContent(i+1);
+    
+    if(n1 != 0 || n2 != 0)
+      vchi2 = (n1 - n2) * (n1 - n2) / (n1 + n2);
+    else
+      vchi2 = 0.;
+    
+    chi2 += vchi2;
+  }
+}
+
+void FillHisto(TChain& t1, TChain& t2, TH1D& h1, TH1D& h2, int nEv)
+{
+  TString name1 = TString::Format("h1_n%d",nEv);
+  TString name2 = TString::Format("h2_n%d",nEv); 
+
+  h1.SetName(name1.Data());
+  h2.SetName(name2.Data());
+
+  int long n1 = t1.Draw(TString::Format("pmu_reco/1E3>>%s",name1.Data()).Data(),fiducial + CC + muonOK + QualityCut+lowE,"E0", nEv);
+  int long n2 = t2.Draw(TString::Format("pmu_reco/1E3>>%s",name2.Data()).Data(),fiducial + CC + muonOK + QualityCut,"E0", nEv);
+  
+  std::cout << "nEv1: " << nEv << " -> " << n1 << " " << std::endl;
+  std::cout << "nEv2: " << nEv << " -> " << n2 << " " << std::endl;
+}
 
 void processChain(TChain& t)
 {
@@ -129,7 +168,9 @@ void processChain(TChain& t)
   
   TLegend* legend1 = new TLegend(0.62,0.8,0.894,0.9);
   legend1->AddEntry("h_Enu", "All neutrinos", "f");
+  legend1->AddEntry((TObject*)0, TString::Format("entries: %.0f",h_Enu.GetEntries()).Data(), "");  
   legend1->AddEntry("h_Enu_int", "Neutrinos surviving the cut", "f");
+  legend1->AddEntry((TObject*)0, TString::Format("entries: %.0f",h_Enu_int.GetEntries()).Data(), ""); 
   legend1->SetFillColor(0);
   legend1->SetBorderSize(1);
   legend1->Draw("");
@@ -171,7 +212,9 @@ void processChain(TChain& t)
   
   TLegend* legend2 = new TLegend(0.62,0.8,0.894,0.9);
   legend2->AddEntry("h_pmu", "All muons", "f");
+  legend2->AddEntry((TObject*)0, TString::Format("entries: %.0f",h_pmu.GetEntries()).Data(), ""); 
   legend2->AddEntry("h_pmu_ok", "Correctly reconstructed muons", "f");
+  legend2->AddEntry((TObject*)0, TString::Format("entries: %.0f",h_pmu.GetEntries()).Data(), ""); 
   legend2->SetFillColor(0);
   legend2->SetBorderSize(1);
   legend2->Draw("");
@@ -232,7 +275,7 @@ void processChain(TChain& t)
 
 }
 
-void ana()
+void anamine()
 {
   gROOT->SetBatch(1);
 
@@ -241,16 +284,39 @@ void ana()
   tNom.Add(path + "nominal/*");
   tH1Y.Add(path + "shift/*");
 
+  //////////////////////////////////////////////SetALIASES
+  
   tNom.SetAlias("pmu_true","sqrt(pxmu_true*pxmu_true+pymu_true*pymu_true+pzmu_true*pzmu_true)");
   tH1Y.SetAlias("pmu_true","sqrt(pxmu_true*pxmu_true+pymu_true*pymu_true+pzmu_true*pzmu_true)");
+  
   tNom.SetAlias("pmu_reco","sqrt(pxmu_reco*pxmu_reco+pymu_reco*pymu_reco+pzmu_reco*pzmu_reco)");
   tH1Y.SetAlias("pmu_reco","sqrt(pxmu_reco*pxmu_reco+pymu_reco*pymu_reco+pzmu_reco*pzmu_reco)");
+  
+  tNom.SetAlias("ptmu_true","sqrt(pymu_true*pymu_true+pzmu_true*pzmu_true)");
+  tH1Y.SetAlias("ptmu_true","sqrt(pymu_true*pymu_true+pzmu_true*pzmu_true)");
+
+  tNom.SetAlias("ptmu_reco","sqrt(pymu_reco*pymu_reco+pzmu_reco*pzmu_reco)");
+  tH1Y.SetAlias("ptmu_reco","sqrt(pymu_reco*pymu_reco+pzmu_reco*pzmu_reco)");
+  
+  tNom.SetAlias("reldptmu","1-ptmu_true/ptmu_reco");
+  tH1Y.SetAlias("reldptmu","1-ptmu_true/ptmu_reco");
+
+  tNom.SetAlias("reldplmu","1-abs(pxmu_true)/abs(pxmu_reco)");
+  tH1Y.SetAlias("reldplmu","1-abs(pxmu_true)/abs(pxmu_reco)");
+  
+
+  tNom.SetAlias("red_chi2_cr","2*chi2_cr/nHit");
+  tH1Y.SetAlias("red_chi2_cr","2*chi2_cr/nHit");
+
+  tNom.SetAlias("red_chi2_ln","2*chi2_ln/nHit");
+  tH1Y.SetAlias("red_chi2_ln","2*chi2_ln/nHit");
+  ////////////////////////////////////////////////////////////////////
 
   processChain(tNom);
 
-  TCut lowE = "Enu_true/1E3<20";
 
   int long NlowEok = tNom.GetEntries(lowE);
+  
   
   ///////////////////////////////////////////////////////////////////Enu NOM vs SHIFT
 
@@ -268,11 +334,11 @@ void ana()
   hEnuNom.SetTitle("");//Neutrino energy distribution 
   hEnuNom.GetXaxis()->SetTitle("E_{#nu}[GeV]");
   hEnuNom.GetYaxis()->SetTitle("events");
-  hEnuNom.SetFillColor(kBlue-10);
+  //hEnuNom.SetFillColor(kBlue-10);
   hEnuNom.SetLineColor(kBlue);
   hEnuNom.SetFillStyle(3001);
-  hEnuH1Y.SetFillColor(kRed-10);
-  hEnuH1Y.SetLineColor(kRed);
+  //hEnuH1Y.SetFillColor(kRed-10);
+  hEnuH1Y.SetLineColor(kOrange);
   hEnuH1Y.SetFillStyle(3001);
   c1.cd();
   hEnuNom.Draw();
@@ -309,6 +375,9 @@ void ana()
   TH1D hNom_true_fid_Q("hNom_true_fid_Q","",40,0,16);
   TH1D hH1Y_true_fid_Q("hH1Y_true_fid_Q","",40,0,16);
   
+  TH1D hNom_reco_fid_Q("hNom_reco_fid_Q","",40,0,16);
+  TH1D hH1Y_reco_fid_Q("hH1Y_reco_fid_Q","",40,0,16);
+  
   ////////////Control half statistic histograms from same flux (preco)
   
   tNom.Draw("pmu_reco/1E3>>hNomHalf1",fiducial + CC + muonOK + lowE,"E0",tNom.GetEntries()*0.5,0);
@@ -316,16 +385,22 @@ void ana()
   
   hNomHalf1.GetXaxis()->SetTitle("p_{#mu}^{reco}[GeV/c]");
   hNomHalf1.GetYaxis()->SetTitle("events");
-  hNomHalf1.SetFillColor(kBlue-10);
+  //hNomHalf1.SetFillColor(kBlue-10);
   hNomHalf1.SetLineColor(kBlue);
   hNomHalf1.SetFillStyle(3001);
-  hNomHalf2.SetFillColor(kGreen-10);
+  //hNomHalf2.SetFillColor(kGreen-10);
   hNomHalf2.SetLineColor(kGreen);
   hNomHalf2.SetFillStyle(3001);
 
   c1.SetLogy(true);
   hNomHalf1.Draw();
   hNomHalf2.Draw("same");
+  TLegend* legend = new TLegend(0.62,0.8,0.894,0.9);
+  legend->AddEntry("hNomHalf1", TString::Format("entries: %.0f",hNomHalf1.GetEntries()).Data(), "f");
+  legend->AddEntry("hNomHalf2", TString::Format("entries: %.0f",hNomHalf2.GetEntries()).Data(), "f");
+  legend->SetFillColor(0);
+  legend->SetBorderSize(1);
+  legend->Draw("");
   c1.SaveAs(path + "result.pdf","pdf");
   c1.SaveAs(path + "precoHalf.png");
   c1.SetLogy(false);
@@ -337,19 +412,21 @@ void ana()
 
   hNom.GetXaxis()->SetTitle("p_{#mu}[GeV/c]");
   hNom.GetYaxis()->SetTitle("events");
-  hNom.SetFillColor(kBlue-10);
+  //hNom.SetFillColor(kBlue-10);
   hNom.SetLineColor(kBlue);
-  hNom.SetFillStyle(3001);
-  hH1Y.SetFillColor(kRed-10);
-  hH1Y.SetLineColor(kRed);
-  hH1Y.SetFillStyle(3001);
+  //hNom.SetFillStyle(3001);
+  //hH1Y.SetFillColor(kRed-10);
+  hH1Y.SetLineColor(kOrange);
+  //hH1Y.SetFillStyle(3001);
 
   c1.SetLogy(true);
   hNom.Draw();
   hH1Y.Draw("same");
   TLegend* legend4a = new TLegend(0.62,0.8,0.894,0.9);
   legend4a->AddEntry("hNom", "p_{#mu}^{reco} nominal", "f");
+  legend4a->AddEntry((TObject*)0, TString::Format("entries: %.0f",hNom.GetEntries()).Data(), ""); 
   legend4a->AddEntry("hH1Y", "p_{#mu}^{reco} shifted", "f");
+  legend4a->AddEntry((TObject*)0, TString::Format("entries: %.0f",hH1Y.GetEntries()).Data(), "");
   legend4a->SetFillColor(0);
   legend4a->SetBorderSize(1);
   legend4a->Draw("");
@@ -365,11 +442,11 @@ void ana()
   
   hNom_true.GetXaxis()->SetTitle("p_{#mu}[GeV/c]");
   hNom_true.GetYaxis()->SetTitle("events");
-  hNom_true.SetFillColor(kBlue-10);
+  //hNom_true.SetFillColor(kBlue-10);
   hNom_true.SetLineColor(kBlue);
   hNom_true.SetFillStyle(3001);
-  hH1Y_true.SetFillColor(kRed-10);
-  hH1Y_true.SetLineColor(kRed);
+  //hH1Y_true.SetFillColor(kRed-10);
+  hH1Y_true.SetLineColor(kOrange);
   hH1Y_true.SetFillStyle(3001);
 
 
@@ -378,7 +455,9 @@ void ana()
   hH1Y_true.Draw("same");
   TLegend* legend4b = new TLegend(0.62,0.8,0.894,0.9);
   legend4b->AddEntry("hNom_true", "p_{#mu}^{true} nominal", "f");
+  legend4b->AddEntry((TObject*)0, TString::Format("entries: %.0f",hNom_true.GetEntries()).Data(), ""); 
   legend4b->AddEntry("hH1Y_true", "p_{#mu}^{true} shifted", "f");
+  legend4b->AddEntry((TObject*)0, TString::Format("entries: %.0f",hH1Y_true.GetEntries()).Data(), ""); 
   legend4b->SetFillColor(0);
   legend4b->SetBorderSize(1);
   legend4b->Draw("");
@@ -393,11 +472,11 @@ void ana()
   
   hNom_true_fid.GetXaxis()->SetTitle("p_{#mu}[GeV/c]");
   hNom_true_fid.GetYaxis()->SetTitle("events");
-  hNom_true_fid.SetFillColor(kBlue-10);
+  //hNom_true_fid.SetFillColor(kBlue-10);
   hNom_true_fid.SetLineColor(kBlue);
   hNom_true_fid.SetFillStyle(3001);
-  hH1Y_true_fid.SetFillColor(kRed-10);
-  hH1Y_true_fid.SetLineColor(kRed);
+  //hH1Y_true_fid.SetFillColor(kRed-10);
+  hH1Y_true_fid.SetLineColor(kOrange);
   hH1Y_true_fid.SetFillStyle(3001);
 
 
@@ -406,7 +485,9 @@ void ana()
   hH1Y_true_fid.Draw("same");
   TLegend* legend5 = new TLegend(0.62,0.8,0.894,0.9);
   legend5->AddEntry("hNom_true_fid", "p_{#mu}^{true} nominal", "f");
+  legend5->AddEntry((TObject*)0, TString::Format("entries: %.0f",hNom_true_fid.GetEntries()).Data(), ""); 
   legend5->AddEntry("hH1Y_true_fid", "p_{#mu}^{true} shifted", "f");
+  legend5->AddEntry((TObject*)0, TString::Format("entries: %.0f",hH1Y_true_fid.GetEntries()).Data(), ""); 
   legend5->SetFillColor(0);
   legend5->SetBorderSize(1);
   legend5->Draw("");
@@ -414,7 +495,7 @@ void ana()
   c1.SaveAs(path + "ptrueFluxesAll.png");
   c1.SetLogy(false);
  
-
+  
   ///////////////////////////////////QEcut (p_reco) 
   
   tNom.Draw("pmu_reco/1E3>>hNom_true_fid_QE",fiducial + CC + muonOK + lowE + QE,"E0");
@@ -454,36 +535,69 @@ void ana()
   c1.SaveAs(path + "ptrueVSprecoQE.png");
   
   
-  ///////////////////////////////////Quality cut (p_reco) 
+  ///////////////////////////////////Quality cut (p_true) 
   
-  tNom.Draw("pmu_reco/1E3>>hNom_true_fid_Q",fiducial + CC + muonOK + lowE + QualityCut,"E0");
-  tH1Y.Draw("pmu_reco/1E3>>hH1Y_true_fid_Q",fiducial + CC + muonOK + lowE + QualityCut,"E0",NlowEok,0);
+  tNom.Draw("pmu_true/1E3>>hNom_true_fid_Q",fiducial + CC + muonOK + lowE + QualityCut,"E0");
+  tH1Y.Draw("pmu_true/1E3>>hH1Y_true_fid_Q",fiducial + CC + muonOK + lowE + QualityCut,"E0",NlowEok,0);
   
   hNom_true_fid_Q.GetXaxis()->SetTitle("p_{#mu}[GeV/c]");
   hNom_true_fid_Q.GetYaxis()->SetTitle("events");
-  hNom_true_fid_Q.SetFillColor(kBlue-10);
+  //hNom_true_fid_Q.SetFillColor(kBlue-10);
   hNom_true_fid_Q.SetLineColor(kBlue);
-  hNom_true_fid_Q.SetFillStyle(3001);
-  hH1Y_true_fid_Q.SetFillColor(kRed-10);
-  hH1Y_true_fid_Q.SetLineColor(kRed);
-  hH1Y_true_fid_Q.SetFillStyle(3001);
-  
+  //hNom_true_fid_Q.SetFillStyle(3001);
+  //hH1Y_true_fid_Q.SetFillColor(kRed-10);
+  hH1Y_true_fid_Q.SetLineColor(kOrange);
+  //hH1Y_true_fid_Q.SetFillStyle(3001);
+
   c1.SetLogy(true);
   hNom_true_fid_Q.Draw();
   hH1Y_true_fid_Q.Draw("same");
   TLegend* legendQ = new TLegend(0.62,0.8,0.894,0.9);
-  legendQ->AddEntry("hNom_true_fid_QE", "p_{#mu}^{reco} nominal", "f");
-  legendQ->AddEntry("hH1Y_true_fid_QE", "p_{#mu}^{reco} shifted", "f");
+  legendQ->AddEntry("hNom_true_fid_Q", "p_{#mu}^{true} nominal", "f");
+  legendQ->AddEntry((TObject*)0, TString::Format("entries: %.0f",hNom_true_fid_Q.GetEntries()).Data(), "");  
+  legendQ->AddEntry("hH1Y_true_fid_Q", "p_{#mu}^{true} shifted", "f");
+  legendQ->AddEntry((TObject*)0, TString::Format("entries: %.0f",hH1Y_true_fid_Q.GetEntries()).Data(), "");
+  
   legendQ->SetFillColor(0);
   legendQ->SetBorderSize(1);
   legendQ->Draw("");
+  c1.SaveAs(path + "result.pdf","pdf");
+  c1.SaveAs(path + "ptrueFluxesQ.png");
+  c1.SetLogy(false);
+  
+  ///////////////////////////////////Quality cut (p_reco) 
+  
+  tNom.Draw("pmu_reco/1E3>>hNom_reco_fid_Q",fiducial + CC + muonOK + lowE + QualityCut,"E0");
+  tH1Y.Draw("pmu_reco/1E3>>hH1Y_reco_fid_Q",fiducial + CC + muonOK + lowE + QualityCut,"E0",NlowEok,0);
+  
+  hNom_reco_fid_Q.GetXaxis()->SetTitle("p_{#mu}[GeV/c]");
+  hNom_reco_fid_Q.GetYaxis()->SetTitle("events");
+  //hNom_true_fid_Q.SetFillColor(kBlue-10);
+  hNom_reco_fid_Q.SetLineColor(kBlue);
+  //hNom_true_fid_Q.SetFillStyle(3001);
+  //hH1Y_true_fid_Q.SetFillColor(kRed-10);
+  hH1Y_reco_fid_Q.SetLineColor(kOrange);
+  //hH1Y_true_fid_Q.SetFillStyle(3001);
+
+  c1.SetLogy(true);
+  hNom_reco_fid_Q.Draw();
+  hH1Y_reco_fid_Q.Draw("same");
+  TLegend* legendQr = new TLegend(0.62,0.8,0.894,0.9);
+  legendQr->AddEntry("hNom_reco_fid_Q", "p_{#mu}^{reco} nominal", "f");
+  legendQr->AddEntry((TObject*)0, TString::Format("entries: %.0f",hNom_reco_fid_Q.GetEntries()).Data(), "");  
+  legendQr->AddEntry("hH1Y_reco_fid_Q", "p_{#mu}^{reco} shifted", "f");
+  legendQr->AddEntry((TObject*)0, TString::Format("entries: %.0f",hH1Y_reco_fid_Q.GetEntries()).Data(), "");
+  
+  legendQr->SetFillColor(0);
+  legendQr->SetBorderSize(1);
+  legendQr->Draw("");
   c1.SaveAs(path + "result.pdf","pdf");
   c1.SaveAs(path + "precoFluxesQ.png");
   c1.SetLogy(false);
   
   /////////////////////////////////ptrueVSpreco Quality Cut
   
-  TH2D h_pQ("h_pQ","",200,0,40,200,0,20);
+  TH2D h_pQ("h_pQ","",200,0,20,200,0,20);
   h_pQ.GetXaxis()->SetTitle("p_{#mu}^{true} [GeV/c]");
   h_pQ.GetYaxis()->SetTitle("p_{#mu}^{reco} [GeV/c]");
   tNom.Draw("pmu_reco/1E3:pmu_true/1E3>>h_pQ",fiducial + CC + muonOK + lowE + QualityCut,"");
@@ -492,9 +606,38 @@ void ana()
   c1.SaveAs(path + "result.pdf","pdf");
   c1.SaveAs(path + "ptrueVSprecoQ.png");
   
+  ////////////////////////////////Resolutions
+  
+  TH2D h_reldpt_chi2("h_reldpt_chi2","",100,0,1E6,100,-1,1);
+  tNom.Draw("reldptmu:chi2_cr>>h_reldpt_chi2",fiducial + CC + muonOK,"");
+  h_reldpt_chi2.Draw("colz");
+
+  c1.SaveAs(path + "result.pdf","pdf");
+  c1.SaveAs(path + "pt_chi2_cr.png");
+  
+  TH2D h_reldpt_redchi2("h_reldpt_redchi2","",100,0,10000,100,-1,1);
+  tNom.Draw("reldptmu:red_chi2_cr>>h_reldpt_redchi2",fiducial + CC + muonOK,"");
+  h_reldpt_redchi2.Draw("colz");
+
+  c1.SaveAs(path + "result.pdf","pdf");
+  c1.SaveAs(path + "pt_redchi2_cr.png");
+  
+  TH2D h_reldpl_chi2("h_reldpl_chi2","",100,0,100,100,-1,1);
+  tNom.Draw("reldplmu:chi2_ln>>h_reldpl_chi2",fiducial + CC + muonOK,"");
+  h_reldpl_chi2.Draw("colz");
+
+  c1.SaveAs(path + "result.pdf","pdf");
+  c1.SaveAs(path + "pl_chi2_ln.png");
+  
+  TH2D h_reldpl_redchi2("h_reldpl_redchi2","",100,0,10,100,-1,1);
+  tNom.Draw("reldplmu:red_chi2_ln>>h_reldpl_redchi2",fiducial + CC + muonOK,"");
+  h_reldpl_redchi2.Draw("colz");
+
+  c1.SaveAs(path + "result.pdf","pdf");  
+  c1.SaveAs(path + "pl_redchi2_ln.png");
   
   /////////////////////////////////////////////////////CHI2TEST//////////////////////////////////////////////////////////////////
-  
+  /*
   TH1D hDiff("hDiff","",40,0,16);
   TH1D hChi2("hChi2","",40,0,16);
   TH1D hChi2_half("hChi2_half","",40,0,16);
@@ -502,7 +645,9 @@ void ana()
   TH1D hChi2_true_fid("hChi2_true_fid","",40,0,16);
   TH1D hChi2_true_fid_QE("hChi2_true_fid_QE","",40,0,16);
   TH1D hChi2_true_fid_Q("hChi2_true_fid_Q","",40,0,16);
- 
+  TH1D hChi2_reco_fid_Q("hChi2_reco_fid_Q","",40,0,16);
+  */
+  int ndof;
   double chi2tot = 0.;
   double chi2 = 0.;
   
@@ -520,7 +665,18 @@ void ana()
   
   double chi2tot_true_fid_Q = 0.;
   double chi2_true_fid_Q = 0.;
-
+  
+  double chi2tot_reco_fid_Q = 0.;
+  double chi2_reco_fid_Q = 0.;
+  
+  EvalChi2(hNom, hH1Y, chi2, ndof);
+  EvalChi2(hNomHalf1, hNomHalf2, chi2_half, ndof);
+  EvalChi2(hNom_true, hH1Y_true, chi2_true, ndof);
+  EvalChi2(hNom_true_fid, hH1Y_true_fid, chi2_true_fid, ndof);
+  EvalChi2(hNom_true_fid_Q, hH1Y_true_fid_Q, chi2_true_fid_Q, ndof);
+  EvalChi2(hNom_reco_fid_Q, hH1Y_reco_fid_Q, chi2_reco_fid_Q, ndof);
+	
+  /*
   for(int i = 0; i < hDiff.GetNbinsX(); i++)
   {
     hDiff.SetBinContent(i+1,abs(hNom.GetBinContent(i+1)-hH1Y.GetBinContent(i+1))/hNom.GetBinContent(i+1));
@@ -531,6 +687,7 @@ void ana()
     chi2_true_fid = (hNom_true_fid.GetBinContent(i+1)-hH1Y_true_fid.GetBinContent(i+1))*(hNom_true_fid.GetBinContent(i+1)-hH1Y_true_fid.GetBinContent(i+1))/(hNom_true_fid.GetBinContent(i+1)+hH1Y_true_fid.GetBinContent(i+1));
     chi2_true_fid_QE = (hNom_true_fid_QE.GetBinContent(i+1)-hH1Y_true_fid_QE.GetBinContent(i+1))*(hNom_true_fid_QE.GetBinContent(i+1)-hH1Y_true_fid_QE.GetBinContent(i+1))/(hNom_true_fid_QE.GetBinContent(i+1)+hH1Y_true_fid_QE.GetBinContent(i+1));
 	chi2_true_fid_Q = (hNom_true_fid_Q.GetBinContent(i+1)-hH1Y_true_fid_Q.GetBinContent(i+1))*(hNom_true_fid_Q.GetBinContent(i+1)-hH1Y_true_fid_Q.GetBinContent(i+1))/(hNom_true_fid_Q.GetBinContent(i+1)+hH1Y_true_fid_Q.GetBinContent(i+1));
+	chi2_reco_fid_Q = (hNom_reco_fid_Q.GetBinContent(i+1)-hH1Y_reco_fid_Q.GetBinContent(i+1))*(hNom_reco_fid_Q.GetBinContent(i+1)-hH1Y_reco_fid_Q.GetBinContent(i+1))/(hNom_reco_fid_Q.GetBinContent(i+1)+hH1Y_reco_fid_Q.GetBinContent(i+1));
 	
     chi2tot += chi2;
 	chi2tot_half += chi2_half;
@@ -538,6 +695,7 @@ void ana()
     chi2tot_true_fid += chi2_true_fid;
 	chi2tot_true_fid_QE += chi2_true_fid_QE;
 	chi2tot_true_fid_Q += chi2_true_fid_Q;
+	chi2tot_reco_fid_Q += chi2_reco_fid_Q;
 
     hChi2.SetBinContent(i+1,chi2);
 	hChi2_half.SetBinContent(i+1,chi2_half);
@@ -545,40 +703,46 @@ void ana()
     hChi2_true_fid.SetBinContent(i+1,chi2_true_fid);
 	hChi2_true_fid_QE.SetBinContent(i+1,chi2_true_fid_QE);
 	hChi2_true_fid_Q.SetBinContent(i+1,chi2_true_fid_Q);
+	hChi2_reco_fid_Q.SetBinContent(i+1,chi2_reco_fid_Q);
   }
+  */
+  //hDiff.Draw(); 
+  //c1.SaveAs(path + "result.pdf","pdf");
 
-  hDiff.Draw(); 
-  c1.SaveAs(path + "result.pdf","pdf");
-
-  hChi2.Draw("");
-  std::cout << "chi2: " << chi2tot << " (" << hChi2.Integral() << ")" << std::endl;
-  std::cout << "prob: " << TMath::Prob(chi2tot,hChi2.GetNbinsX()) << std::endl;
-  c1.SaveAs(path + "result.pdf","pdf");
+  //hChi2.Draw("");
+  std::cout << "chi2: " << chi2 << std::endl;
+  std::cout << "prob: " << TMath::Prob(chi2,hNom.GetNbinsX()) << std::endl;
+  //c1.SaveAs(path + "result.pdf","pdf");
   
-  hChi2_half.Draw("");
-  std::cout << "chi2_half: " << chi2tot_half << " (" << hChi2_half.Integral() << ")" << std::endl;
-  std::cout << "prob_half: " << TMath::Prob(chi2tot_half,hChi2_half.GetNbinsX()) << std::endl;
-  c1.SaveAs(path + "result.pdf","pdf");
+  //hChi2_half.Draw("");
+  std::cout << "chi2_half: " << chi2_half  << std::endl;
+  std::cout << "prob_half: " << TMath::Prob(chi2_half,hNomHalf1.GetNbinsX()) << std::endl;
+  //c1.SaveAs(path + "result.pdf","pdf");
 
-  hChi2_true.Draw("");
-  std::cout << "chi2_true: " << chi2tot_true << std::endl;
-  std::cout << "prob_true: " << TMath::Prob(chi2tot_true,hChi2_true.GetNbinsX()) << std::endl;
-  c1.SaveAs(path + "result.pdf","pdf");
+  //hChi2_true.Draw("");
+  std::cout << "chi2_true: " << chi2_true << std::endl;
+  std::cout << "prob_true: " << TMath::Prob(chi2_true,hNom_true.GetNbinsX()) << std::endl;
+  //c1.SaveAs(path + "result.pdf","pdf");
 
-  hChi2_true_fid.Draw("");
-  std::cout << "chi2_true_fid: " << chi2tot_true_fid << std::endl;
-  std::cout << "prob_true_fid: " << TMath::Prob(chi2tot_true_fid,hChi2_true_fid.GetNbinsX()) << std::endl;
-  c1.SaveAs(path + "result.pdf","pdf");
+  //hChi2_true_fid.Draw("");
+  std::cout << "chi2_true_fid: " << chi2_true_fid << std::endl;
+  std::cout << "prob_true_fid: " << TMath::Prob(chi2_true_fid,hNom_true_fid.GetNbinsX()) << std::endl;
+  //c1.SaveAs(path + "result.pdf","pdf");
   
-  hChi2_true_fid_QE.Draw("");
-  std::cout << "chi2_true_fid_QE: " << chi2tot_true_fid_QE << std::endl;
-  std::cout << "prob_true_fid_QE: " << TMath::Prob(chi2tot_true_fid_QE,hChi2_true_fid_QE.GetNbinsX()) << std::endl;
-  c1.SaveAs(path + "result.pdf)","pdf");
+  //hChi2_true_fid_QE.Draw("");
+  //std::cout << "chi2_true_fid_QE: " << chi2tot_true_fid_QE << std::endl;
+  //std::cout << "prob_true_fid_QE: " << TMath::Prob(chi2tot_true_fid_QE,hChi2_true_fid_QE.GetNbinsX()) << std::endl;
+  //c1.SaveAs(path + "result.pdf)","pdf");
   
-  hChi2_true_fid_Q.Draw("");
-  std::cout << "chi2_true_fid_Q: " << chi2tot_true_fid_Q << std::endl;
-  std::cout << "prob_true_fid_Q: " << TMath::Prob(chi2tot_true_fid_Q,hChi2_true_fid_Q.GetNbinsX()) << std::endl;
-  c1.SaveAs(path + "result.pdf)","pdf");
+  //hChi2_true_fid_Q.Draw("");
+  std::cout << "chi2_true_fid_Q: " << chi2_true_fid_Q << std::endl;
+  std::cout << "prob_true_fid_Q: " << TMath::Prob(chi2_true_fid_Q,hNom_true_fid_Q.GetNbinsX()) << std::endl;
+  //c1.SaveAs(path + "result.pdf)","pdf");
+  
+  //hChi2_reco_fid_Q.Draw("");
+  std::cout << "chi2_reco_fid_Q: " << chi2_reco_fid_Q << std::endl;
+  std::cout << "prob_reco_fid_Q: " << TMath::Prob(chi2_reco_fid_Q,hNom_reco_fid_Q.GetNbinsX()) << std::endl;
+  //c1.SaveAs(path + "result.pdf)","pdf");
   
  
   /////////////////////////////////////////////////////KOLMOGOROV AND ANDERSON//////////////////////////////////////////////////////////////////
@@ -594,6 +758,8 @@ void ana()
   TH1D* hH1Y_true_fid_QEb  = new TH1D("hH1Y_true_fid_QEb","",1000,0,16);
   TH1D* hNom_true_fid_Qb  = new TH1D("hNom_true_fid_Qb","",1000,0,16);
   TH1D* hH1Y_true_fid_Qb  = new TH1D("hH1Y_true_fid_Qb","",1000,0,16);
+  TH1D* hNom_reco_fid_Qb  = new TH1D("hNom_reco_fid_Qb","",1000,0,16);
+  TH1D* hH1Y_reco_fid_Qb  = new TH1D("hH1Y_reco_fid_Qb","",1000,0,16);
   
   tNom.Draw("pmu_reco/1E3>>hNomb",fiducial + CC + muonOK + lowE,"E0");
   tH1Y.Draw("pmu_reco/1E3>>hH1Yb",fiducial + CC + muonOK + lowE,"E0",NlowEok,0);
@@ -605,8 +771,10 @@ void ana()
   tH1Y.Draw("pmu_true/1E3>>hH1Y_true_fidb",fiducial + CC + lowE,"E0",NlowEok,0);
   tNom.Draw("pmu_reco/1E3>>hNom_true_fid_QEb",fiducial + CC + lowE + muonOK + QE,"E0");
   tH1Y.Draw("pmu_reco/1E3>>hH1Y_true_fid_QEb",fiducial + CC + lowE + muonOK + QE,"E0",NlowEok,0);
-  tNom.Draw("pmu_reco/1E3>>hNom_true_fid_Qb",fiducial + CC + lowE + muonOK + QualityCut,"E0");
-  tH1Y.Draw("pmu_reco/1E3>>hH1Y_true_fid_Qb",fiducial + CC + lowE + muonOK + QualityCut,"E0",NlowEok,0);
+  tNom.Draw("pmu_true/1E3>>hNom_true_fid_Qb",fiducial + CC + lowE + muonOK + QualityCut,"E0");
+  tH1Y.Draw("pmu_true/1E3>>hH1Y_true_fid_Qb",fiducial + CC + lowE + muonOK + QualityCut,"E0",NlowEok,0);
+  tNom.Draw("pmu_reco/1E3>>hNom_reco_fid_Qb",fiducial + CC + lowE + muonOK + QualityCut,"E0");
+  tH1Y.Draw("pmu_reco/1E3>>hH1Y_reco_fid_Qb",fiducial + CC + lowE + muonOK + QualityCut,"E0",NlowEok,0);
 /*  
   TH1* hNomc = hNomb.GetCumulative();
   TH1* hH1Yc = hH1Yb.GetCumulative();
@@ -675,14 +843,17 @@ void ana()
   double pk_true_fid_QE = hNom_true_fid_QEb->KolmogorovTest(hH1Y_true_fid_QEb,"");
   double k_true_fid_Q = hNom_true_fid_Qb->KolmogorovTest(hH1Y_true_fid_Qb,"M");
   double pk_true_fid_Q = hNom_true_fid_Qb->KolmogorovTest(hH1Y_true_fid_Qb,"");
+  double k_reco_fid_Q = hNom_reco_fid_Qb->KolmogorovTest(hH1Y_reco_fid_Qb,"M");
+  double pk_reco_fid_Q = hNom_reco_fid_Qb->KolmogorovTest(hH1Y_reco_fid_Qb,"");
 
   
-  std::cout << "kolmogorov test: " << k << "; n:" << hNom.GetEntries() << "; m:" << hH1Y.GetEntries() <<"; prob:" << pk << std::endl;
-  std::cout << "kolmogorov test (half): " << k_half << "; n:" << hNomHalf1.GetEntries() << "; m:" << hNomHalf2.GetEntries() << "; prob:" << pk_half << std::endl;
-  std::cout << "kolmogorov test (true): " << k_true << "; n:" << hNom_true.GetEntries() << "; m:" << hH1Y_true.GetEntries() << "; prob:" << pk_true << std::endl;
-  std::cout << "kolmogorov test (true_fid): " << k_true_fid << "; n:" << hNom_true_fid.GetEntries() << "; m:" << hH1Y_true_fid.GetEntries() << "; prob:" << pk_true_fid << std::endl;
-  std::cout << "kolmogorov test (true_fid_QE): " << k_true_fid_QE << "; n:" << hNom_true_fid_QE.GetEntries() << "; m:" << hH1Y_true_fid_QE.GetEntries() << "; prob:" << pk_true_fid_QE << std::endl;
-  std::cout << "kolmogorov test (true_fid_Q): " << k_true_fid_Q << "; n:" << hNom_true_fid_Q.GetEntries() << "; m:" << hH1Y_true_fid_Q.GetEntries() << "; prob:" << pk_true_fid_Q << std::endl;
+  std::cout << "kolmogorov test: " << k << "; n:" << hNom.GetEntries() << "; m:" << hH1Y.GetEntries() <<"; prob:" << pk << "; sigma:" << TMath::ErfInverse(1-pk)*sqrt(2) << std::endl;
+  std::cout << "kolmogorov test (half): " << k_half << "; n:" << hNomHalf1.GetEntries() << "; m:" << hNomHalf2.GetEntries() << "; prob:" << pk_half << "; sigma:" << TMath::ErfInverse(1-pk_half)*sqrt(2) <<std::endl;
+  std::cout << "kolmogorov test (true): " << k_true << "; n:" << hNom_true.GetEntries() << "; m:" << hH1Y_true.GetEntries() << "; prob:" << pk_true <<"; sigma:" << TMath::ErfInverse(1-pk_true)*sqrt(2) << std::endl;
+  std::cout << "kolmogorov test (true_fid): " << k_true_fid << "; n:" << hNom_true_fid.GetEntries() << "; m:" << hH1Y_true_fid.GetEntries() << "; prob:" << pk_true_fid <<"; sigma:" << TMath::ErfInverse(1-pk_true_fid)*sqrt(2) << std::endl;
+  std::cout << "kolmogorov test (true_fid_QE): " << k_true_fid_QE << "; n:" << hNom_true_fid_QE.GetEntries() << "; m:" << hH1Y_true_fid_QE.GetEntries() << "; prob:" << pk_true_fid_QE << "; sigma:" << TMath::ErfInverse(1-pk_true_fid_QE)*sqrt(2) <<std::endl;
+  std::cout << "kolmogorov test (true_fid_Q): " << k_true_fid_Q << "; n:" << hNom_true_fid_Q.GetEntries() << "; m:" << hH1Y_true_fid_Q.GetEntries() << "; prob:" << pk_true_fid_Q << "; sigma:" << TMath::ErfInverse(1-pk_true_fid_Q)*sqrt(2) <<std::endl;
+  std::cout << "kolmogorov test (reco_fid_Q): " << k_reco_fid_Q << "; n:" << hNom_reco_fid_Q.GetEntries() << "; m:" << hH1Y_reco_fid_Q.GetEntries() << "; prob:" << pk_reco_fid_Q << "; sigma:" << TMath::ErfInverse(1-pk_reco_fid_Q)*sqrt(2) <<std::endl;
   
   double a = hNomb->AndersonDarlingTest(hH1Yb,"T");
   double pa = hNomb->AndersonDarlingTest(hH1Yb,"");
@@ -696,15 +867,74 @@ void ana()
   double pa_true_fid_QE = hNom_true_fid_QEb->AndersonDarlingTest(hH1Y_true_fid_QEb,"");
   double a_true_fid_Q = hNom_true_fid_Qb->AndersonDarlingTest(hH1Y_true_fid_Qb,"T");
   double pa_true_fid_Q = hNom_true_fid_Qb->AndersonDarlingTest(hH1Y_true_fid_Qb,"");
+  double a_reco_fid_Q = hNom_reco_fid_Qb->AndersonDarlingTest(hH1Y_true_fid_Qb,"T");
+  double pa_reco_fid_Q = hNom_reco_fid_Qb->AndersonDarlingTest(hH1Y_reco_fid_Qb,"");
 
   
-  std::cout << "Anderson test: " << a << "; n:" << hNom.GetEntries() << "; m:" << hH1Y.GetEntries() <<"; prob:" << pa << std::endl;
-  std::cout << "Anderson test (half): " << a_half << "; n:" << hNomHalf1.GetEntries() << "; m:" << hNomHalf2.GetEntries() << "; prob:" << pa_half << std::endl;
-  std::cout << "Anderson test (true): " << a_true << "; n:" << hNom_true.GetEntries() << "; m:" << hH1Y_true.GetEntries() << "; prob:" << pa_true << std::endl;
-  std::cout << "Anderson test (true_fid): " << a_true_fid << "; n:" << hNom_true_fid.GetEntries() << "; m:" << hH1Y_true_fid.GetEntries() << "; prob:" << pa_true_fid << std::endl;
-  std::cout << "Anderson test (true_fid_QE): " << a_true_fid_QE << "; n:" << hNom_true_fid_QE.GetEntries() << "; m:" << hH1Y_true_fid_QE.GetEntries() << "; prob:" << pa_true_fid_QE << std::endl;
-  std::cout << "Anderson test (true_fid_Q): " << a_true_fid_Q << "; n:" << hNom_true_fid_Q.GetEntries() << "; m:" << hH1Y_true_fid_Q.GetEntries() << "; prob:" << pa_true_fid_Q << std::endl;
+  std::cout << "Anderson test: " << a << "; n:" << hNom.GetEntries() << "; m:" << hH1Y.GetEntries() <<"; prob:" << pa << "; sigma:" << TMath::ErfInverse(1-pa)*sqrt(2) <<std::endl;
+  std::cout << "Anderson test (half): " << a_half << "; n:" << hNomHalf1.GetEntries() << "; m:" << hNomHalf2.GetEntries() << "; prob:" << pa_half <<"; sigma:" << TMath::ErfInverse(1-pa_half)*sqrt(2) << std::endl;
+  std::cout << "Anderson test (true): " << a_true << "; n:" << hNom_true.GetEntries() << "; m:" << hH1Y_true.GetEntries() << "; prob:" << pa_true <<"; sigma:" << TMath::ErfInverse(1-pa_true)*sqrt(2) << std::endl;
+  std::cout << "Anderson test (true_fid): " << a_true_fid << "; n:" << hNom_true_fid.GetEntries() << "; m:" << hH1Y_true_fid.GetEntries() << "; prob:" << pa_true_fid <<"; sigma:" << TMath::ErfInverse(1-pa_true_fid)*sqrt(2) << std::endl;
+  std::cout << "Anderson test (true_fid_QE): " << a_true_fid_QE << "; n:" << hNom_true_fid_QE.GetEntries() << "; m:" << hH1Y_true_fid_QE.GetEntries() << "; prob:" << pa_true_fid_QE <<"; sigma:" << TMath::ErfInverse(1-pa_true_fid_QE)*sqrt(2) << std::endl;
+  std::cout << "Anderson test (true_fid_Q): " << a_true_fid_Q << "; n:" << hNom_true_fid_Q.GetEntries() << "; m:" << hH1Y_true_fid_Q.GetEntries() << "; prob:" << pa_true_fid_Q <<"; sigma:" << TMath::ErfInverse(1-pa_true_fid_Q)*sqrt(2) << std::endl;
+  std::cout << "Anderson test (reco_fid_Q): " << a_reco_fid_Q << "; n:" << hNom_reco_fid_Q.GetEntries() << "; m:" << hH1Y_reco_fid_Q.GetEntries() << "; prob:" << pa_reco_fid_Q <<"; sigma:" << TMath::ErfInverse(1-pa_reco_fid_Q)*sqrt(2) <<std::endl;
   
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /*
+  int nEvents[] = {1000, 10000, 50000, 100000, 500000, 700000, 800000, 900000, 1000000, 1100000, 1200000, 1300000, 1424112};
+  int nn = sizeof(nEvents)/sizeof(int);
   
-   
+  TH1D* h1[nn];
+  TH1D* h2[nn]; 
+  
+  TGraph grChi2(nn);
+  grChi2.SetMarkerStyle(kPlus);
+  grChi2.SetMarkerSize(1.5);
+  grChi2.SetMarkerColor(kRed);
+  
+  TGraph grPVal(nn);
+  grPVal.SetMarkerStyle(kPlus);
+  grPVal.SetMarkerSize(1.5);
+  grPVal.SetMarkerColor(kRed);
+  
+  TGraph grSens(nn);
+  grSens.SetMarkerStyle(kPlus);
+  grSens.SetMarkerSize(1.5);
+  grSens.SetMarkerColor(kRed);
+  
+  double chi;
+  int n;
+  
+  for(int i = 0; i < nn; i++)
+  {
+    h1[i] = new TH1D("","",40,0,16);
+    h2[i] = new TH1D("","",40,0,16);
+    
+    FillHisto(tNom, tH1Y, *(h1[i]), *(h2[i]), nEvents[i]);
+    
+    EvalChi2(*(h1[i]), *(h2[i]), chi, n);
+    
+    double p_value = TMath::Prob(chi,n);
+    double nsigmas = TMath::ErfInverse(1-p_value)*sqrt(2);
+
+    std::cout << "Nevents: " << nEvents[i] << std::endl;
+    std::cout << "chi2   : " << chi << std::endl;
+    std::cout << "prob   : " << p_value << std::endl;
+    std::cout << "Nsigma : " << nsigmas << std::endl;
+    
+    grChi2.SetPoint(i, nEvents[i], chi);
+    grPVal.SetPoint(i, nEvents[i], p_value);
+    grSens.SetPoint(i, nEvents[i], nsigmas);
+  }
+  
+  c1.cd();
+  grChi2.Draw("APL");
+  c1.SaveAs(path + "result.pdf","pdf");
+  c1.SetLogy(true);
+  grPVal.Draw("APL");
+  c1.SaveAs(path + "result.pdf","pdf");
+  c1.SetLogy(false);
+  grSens.Draw("APL");
+  c1.SaveAs(path + "result.pdf)","pdf");
+  */ 
 }
